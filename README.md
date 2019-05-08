@@ -9,3 +9,5 @@ http://localhost:8080/query?sql=select%20count(*)%20from%20%22foodmart%22
 
 http://localhost:8080/mysql?sql=select%20count(*)%20from%20%22foodmart%22
 
+http://localhost:8080/perf?sql=select%20count(*)%20from%20%22foodmart%22
+

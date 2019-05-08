@@ -11,10 +11,13 @@ public class MySqlController {
 
     private final AtomicLong counter = new AtomicLong();
 
+    private final CalciteQueryManager manager = new CalciteQueryManager();
+
     @RequestMapping("/mysql")
     public QueryResult mysql(
             @RequestParam(value="model", defaultValue="") String model,
             @RequestParam(value="sql", defaultValue="") String sql) {
-        return new QueryResult(counter.incrementAndGet(), sql);
+      return new QueryResult(counter.incrementAndGet(),
+          manager.query(CalciteQueryManager.MYSQL_FOODMART, sql));
     }
 }

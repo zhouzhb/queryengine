@@ -1,0 +1,17 @@
+{
+  version: '1.0',
+  defaultSchema: 'FOODMART',
+  schemas: [
+    {
+      name: 'FOODMART',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
+      operand: {
+        jdbcDriver: 'com.mysql.jdbc.Driver',
+        jdbcUrl: 'jdbc:mysql://mydbinstance.cvjh6uodgi1s.us-west-2.rds.amazonaws.com/foodmart',
+        jdbcUser: 'root',
+        jdbcPassword: 'password'
+      }
+    }
+  ]
+}

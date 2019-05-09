@@ -16,6 +16,9 @@ public class CalciteQueryManager {
     public static final URL FOODMART =
             CalciteQueryManager.class.getResource("/druid-foodmart-model.json");
 
+    public static final URL MYSQL_FOODMART =
+        CalciteQueryManager.class.getResource("/mysql-foodmart-model.json");
+
     /** URL of the "druid-wiki" model
      * and the "wikiticker" data set. */
     public static final URL WIKI =

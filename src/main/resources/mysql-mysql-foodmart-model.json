@@ -3,7 +3,7 @@
   //defaultSchema: 'FOODMART',
   schemas: [
     {
-      name: 'foodmart1',
+      name: 'foodmart',
       type: 'custom',
       factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
       operand: {
@@ -14,12 +14,12 @@
       }
     },
     {
-      name: 'foodmart2',
+      name: 'db_example',
       type: 'custom',
       factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
       operand: {
         jdbcDriver: 'com.mysql.jdbc.Driver',
-        jdbcUrl: 'jdbc:mysql://ec2-54-202-170-44.us-west-2.compute.amazonaws.com/foodmart',
+        jdbcUrl: 'jdbc:mysql://ec2-54-202-170-44.us-west-2.compute.amazonaws.com/db_example',
         jdbcUser: 'root',
         jdbcPassword: 'pass'
       }

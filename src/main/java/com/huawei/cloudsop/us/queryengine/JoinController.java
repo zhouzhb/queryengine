@@ -18,7 +18,7 @@ public class JoinController {
         @RequestParam(value="model", defaultValue="") String model,
         @RequestParam(value="sql", defaultValue="") String sql) {
         return new QueryResult(counter.incrementAndGet(),
-            manager.query(CalciteQueryManager.MYSQL_MYSQL_FOODMART, sql));
+            manager.query(CalciteQueryManager.DRUID_MYSQL_MODEL, sql));
             //manager.query(CalciteQueryManager.DRUID_MYSQL_FOODMART, sql));
             //manager.query(CalciteQueryManager.MYSQL_PERSONS, sql));
     }

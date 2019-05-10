@@ -25,6 +25,9 @@ public class CalciteQueryManager {
     public static final URL MYSQL_MYSQL_FOODMART =
         CalciteQueryManager.class.getResource("/mysql-mysql-foodmart-model.json");
 
+    public static final URL DRUID_MYSQL_MODEL =
+            CalciteQueryManager.class.getResource("/druid-mysql-model.json");
+
     public static final URL MYSQL_PERSONS =
         CalciteQueryManager.class.getResource("/mysql-persons-model.json");
 

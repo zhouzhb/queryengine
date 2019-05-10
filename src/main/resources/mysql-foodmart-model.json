@@ -8,9 +8,9 @@
       factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
       operand: {
         jdbcDriver: 'com.mysql.jdbc.Driver',
-        jdbcUrl: 'jdbc:mysql://mydbinstance.cvjh6uodgi1s.us-west-2.rds.amazonaws.com/foodmart',
+        jdbcUrl: 'jdbc:mysql://ec2-54-202-170-44.us-west-2.compute.amazonaws.com/foodmart',
         jdbcUser: 'root',
-        jdbcPassword: 'password'
+        jdbcPassword: 'pass'
       }
     }
   ]

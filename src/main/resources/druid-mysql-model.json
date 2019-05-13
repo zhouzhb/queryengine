@@ -8,7 +8,7 @@
       factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
       operand: {
         jdbcDriver: 'com.mysql.jdbc.Driver',
-        jdbcUrl: 'jdbc:mysql://ec2-54-202-170-44.us-west-2.compute.amazonaws.com/db_example',
+        jdbcUrl: 'jdbc:mysql://ec2-54-201-169-42.us-west-2.compute.amazonaws.com/db_example',
         jdbcUser: 'root',
         jdbcPassword: 'pass'
       }
@@ -18,8 +18,8 @@
       "name": "foodmart",
       "factory": "org.apache.calcite.adapter.druid.DruidSchemaFactory",
       "operand": {
-        "url": "http://ec2-54-202-170-44.us-west-2.compute.amazonaws.com:8082",
-        "coordinatorUrl": "http://ec2-54-202-170-44.us-west-2.compute.amazonaws.com:8081"
+        "url": "http://ec2-54-201-169-42.us-west-2.compute.amazonaws.com:8082",
+        "coordinatorUrl": "http://ec2-54-201-169-42.us-west-2.compute.amazonaws.com:8081"
       },
       "tables": [
         {

@@ -1,7 +1,9 @@
-package com.huawei.cloudsop.us.queryengine;
+package com.huawei.cloudsop.us.queryengine.Controller;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.huawei.cloudsop.us.queryengine.Manager.CalciteQueryManager;
+import com.huawei.cloudsop.us.queryengine.Connection.QueryResult;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,9 +17,8 @@ public class QueryController {
 
     @RequestMapping("/query")
     public QueryResult query(
-            @RequestParam(value="model", defaultValue="") String model,
             @RequestParam(value="sql", defaultValue="") String sql) {
         return new QueryResult(counter.incrementAndGet(),
-                manager.query(CalciteQueryManager.FOODMART, sql));
+                manager.query(CalciteQueryManager.DRUID_MYSQL_MODEL, sql));
     }
 }

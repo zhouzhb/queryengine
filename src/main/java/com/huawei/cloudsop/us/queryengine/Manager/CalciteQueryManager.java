@@ -1,5 +1,8 @@
-package com.huawei.cloudsop.us.queryengine;
+package com.huawei.cloudsop.us.queryengine.Manager;
 
+import com.huawei.cloudsop.us.queryengine.Connection.ConnectionFactory;
+import com.huawei.cloudsop.us.queryengine.Connection.ConnectionFactoryImpl;
+import com.huawei.cloudsop.us.queryengine.Connection.ResultSetFormatter;
 import org.apache.calcite.avatica.util.DateTimeUtils;
 import org.apache.calcite.jdbc.CalciteConnection;
 import org.apache.calcite.config.CalciteConnectionProperty;
@@ -12,39 +15,8 @@ import java.sql.Statement;
 import java.util.Properties;
 
 public class CalciteQueryManager {
-    /** URL of the "druid-foodmart" model. */
-    public static final URL FOODMART =
-            CalciteQueryManager.class.getResource("/druid-foodmart-model.json");
-
-    public static final URL MYSQL_FOODMART =
-        CalciteQueryManager.class.getResource("/mysql-foodmart-model.json");
-
-    public static final URL DRUID_MYSQL_FOODMART =
-        CalciteQueryManager.class.getResource("/druid-mysql-foodmart-model.json");
-
-    public static final URL MYSQL_MYSQL_FOODMART =
-        CalciteQueryManager.class.getResource("/mysql-mysql-foodmart-model.json");
-
     public static final URL DRUID_MYSQL_MODEL =
             CalciteQueryManager.class.getResource("/druid-mysql-model.json");
-
-    public static final URL MYSQL_PERSONS =
-        CalciteQueryManager.class.getResource("/mysql-persons-model.json");
-
-    /** URL of the "druid-wiki" model
-     * and the "wikiticker" data set. */
-    public static final URL WIKI =
-            CalciteQueryManager.class.getResource("/druid-wiki-model.json");
-
-    /** URL of the "druid-wiki-no-columns" model
-     * and the "wikiticker" data set. */
-    public static final URL WIKI_AUTO =
-            CalciteQueryManager.class.getResource("/druid-wiki-no-columns-model.json");
-
-    /** URL of the "druid-wiki-no-tables" model
-     * and the "wikiticker" data set. */
-    public static final URL WIKI_AUTO2 =
-            CalciteQueryManager.class.getResource("/druid-wiki-no-tables-model.json");
 
     public String query(URL model, String sql) {
         ConnectionFactory factory =

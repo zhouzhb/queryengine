@@ -1,4 +1,4 @@
-package com.huawei.cloudsop.us.queryengine;
+package com.huawei.cloudsop.us.queryengine.Connection;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;

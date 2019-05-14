@@ -4,6 +4,17 @@ mvn install
 mvn spring-boot:run
 ```
 
+
+#schemas
+MySQL:
+"foodmart-mysql"."foodmart"
+"persons"."persons"
+
+Druid:
+"foodmart"."foodmart"
+
+
+# sample queries
 Druid
 http://localhost:8080/query?sql=select%20count(*)%20from%20%22foodmart%22.%22foodmart%22
 

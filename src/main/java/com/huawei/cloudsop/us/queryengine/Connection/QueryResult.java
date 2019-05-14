@@ -1,4 +1,4 @@
-package com.huawei.cloudsop.us.queryengine;
+package com.huawei.cloudsop.us.queryengine.Connection;
 
 public class QueryResult {
     private final long id;

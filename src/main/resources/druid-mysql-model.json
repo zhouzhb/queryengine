@@ -3,13 +3,24 @@
   //defaultSchema: 'FOODMART',
   schemas: [
     {
-      name: 'db_example',
+      name: 'foodmart-mysql',
       type: 'custom',
       factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
       operand: {
         jdbcDriver: 'com.mysql.jdbc.Driver',
-        jdbcUrl: 'jdbc:mysql://ec2-54-202-170-44.us-west-2.compute.amazonaws.com/db_example',
-        jdbcUser: 'root',
+        jdbcUrl: 'jdbc:mysql://ec2-54-201-169-42.us-west-2.compute.amazonaws.com/foodmart',
+        jdbcUser: 'queryengine',
+        jdbcPassword: 'pass'
+      }
+    },
+    {
+      name: 'persons',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
+      operand: {
+        jdbcDriver: 'com.mysql.jdbc.Driver',
+        jdbcUrl: 'jdbc:mysql://ec2-54-201-169-42.us-west-2.compute.amazonaws.com/persons',
+        jdbcUser: 'queryengine',
         jdbcPassword: 'pass'
       }
     },
@@ -18,8 +29,8 @@
       "name": "foodmart",
       "factory": "org.apache.calcite.adapter.druid.DruidSchemaFactory",
       "operand": {
-        "url": "http://ec2-54-202-170-44.us-west-2.compute.amazonaws.com:8082",
-        "coordinatorUrl": "http://ec2-54-202-170-44.us-west-2.compute.amazonaws.com:8081"
+        "url": "http://ec2-54-201-169-42.us-west-2.compute.amazonaws.com:8082",
+        "coordinatorUrl": "http://ec2-54-201-169-42.us-west-2.compute.amazonaws.com:8081"
       },
       "tables": [
         {

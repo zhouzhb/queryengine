@@ -1,18 +1,21 @@
 # queryengine
+
+## how to run
 ``` 
 mvn install
 mvn spring-boot:run
 ```
 
 
-#schemas
+## tables
+```
 MySQL:
 "foodmart-mysql"."foodmart"
 "persons"."persons"
 
 Druid:
 "foodmart"."foodmart"
-
+```
 
 # sample queries
 Druid

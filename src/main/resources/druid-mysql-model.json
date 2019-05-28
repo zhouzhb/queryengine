@@ -2,7 +2,7 @@
   version: '1.0',
   schemas: [
     {
-      name: 'test',
+      name: 'mysql',
       type: 'custom',
       factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
       operand: {
@@ -11,6 +11,102 @@
         jdbcUser: 'root',
         jdbcPassword: 'pass'
       }
+    },
+    {
+      "name": "druid",
+      "type": "custom",
+      "factory": "org.apache.calcite.adapter.druid.DruidSchemaFactory",
+      "operand": {
+        "url": "http://localhost:8082",
+        "coordinatorUrl": "http://localhost:8081"
+      },
+      "tables": [
+        {
+          "name": "test",
+          "factory": "org.apache.calcite.adapter.druid.DruidTableFactory",
+          "operand": {
+            "interval": "2015-01-09T00:00:00.000Z/2020-01-10T00:00:00.000Z",
+            "timestampColumn": {
+              "name": "time",
+              "type": "timestamp with local time zone"
+            },
+            "dimensions": [
+              "intInc1",
+              "intRep1",
+              "dblInc1",
+              "dblRep1",
+              "strInc1",
+              "strRep1",
+              "decInc1",
+              "decRep1",
+              "boolInc1",
+              "boolRep1",
+              "smallInc1",
+              "smallRep1",
+              "dateCur1",
+              "dateInc1",
+              "intInc2",
+              "intRep2",
+              "dblInc2",
+              "dblRep2",
+              "strInc2",
+              "strRep2",
+              "decInc2",
+              "decRep2",
+              "boolInc2",
+              "boolRep2",
+              "smallInc2",
+              "smallRep2",
+              "dateCur2",
+              "dateInc2",
+              "intInc3",
+              "intRep3",
+              "dblInc3",
+              "dblRep3",
+              "strInc3",
+              "strRep3",
+              "decInc3",
+              "decRep3",
+              "boolInc3",
+              "boolRep3",
+              "smallInc3",
+              "smallRep3",
+              "dateCur3",
+              "dateInc3",
+              "intInc4",
+              "intRep4",
+              "dblInc4",
+              "dblRep4",
+              "strInc4",
+              "strRep4",
+              "decInc4",
+              "decRep4",
+              "boolInc4",
+              "boolRep4",
+              "smallInc4",
+              "smallRep4",
+              "dateCur4",
+              "dateInc4",
+              "intInc5",
+              "intRep5",
+              "dblInc5",
+              "dblRep5",
+              "strInc5",
+              "strRep5",
+              "decInc5",
+              "decRep5",
+              "boolInc5",
+              "boolRep5",
+              "smallInc5",
+              "smallRep5",
+              "dateCur5",
+              "dateInc5"
+            ],
+            "metrics": [],
+            "complexMetrics" : []
+          }
+        }
+      ]
     }
   ]
 }

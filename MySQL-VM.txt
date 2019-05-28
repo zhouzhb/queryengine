@@ -1,0 +1,39 @@
+Create a directory and named it to represent a VM you plan on creating, eg, "MySQL" for VM with MySQL installed on it.
+Create a file in that directory named Vagrantfile with this content:
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/trusty64"
+  config.vm.network "forwarded_port", guest: 3306, host: 3306
+end
+
+Run command "vagrant up" in the same directory.
+This will create a VirtualBox image of Ubuntu Server 14.
+Run "vagrant ssh" to SSH to the VM.
+
+Install MySQL by running the following commands saying "Yes" to everything:
+
+sudo apt-get update
+sudo apt-get install mysql-server
+ enter "pass" for root user password
+sudo ufw allow mysql
+sudo service mysql restart
+
+sudo vi /etc/mysql/my.cnf
+ comment out this line:
+  skip-external-locking
+ set this line to be:
+  bind-address = 0.0.0.0
+:x
+sudo service mysql restart
+
+sudo mysql -u root -p -e "grant all privileges on *.* to 'root'@'%' identified by 'pass' with grant option";
+ enter "pass" when asked for password
+sudo service mysql restart
+
+You can now connect to the VM MySQL as if it was your local MySQL installation using the "mysql -u root -p" command. For example, to ingest test data into MySQL, run this command:
+ mysql -u root -p < mysql.sql
+where mysql.sql file is generated using this script: https://github.com/valtroffuture/scripts/blob/master/mysql.scala and its sample can be downloaded from https://github.com/valtroffuture/scripts/blob/master/mysql.sql
+Then you can verify that the data ingested by running "mysql -u root -p", then "select count(*) from test.test;" and you should see "100" as the result.
+
+
+

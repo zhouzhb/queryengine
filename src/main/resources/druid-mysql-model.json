@@ -25,16 +25,12 @@
           "name": "test",
           "factory": "org.apache.calcite.adapter.druid.DruidTableFactory",
           "operand": {
-            "interval": "2015-01-09T00:00:00.000Z/2020-01-10T00:00:00.000Z",
+            "interval": "2019-01-01T00:00:00.000Z/2020-01-01T00:00:00.000Z",
             "timestampColumn": {
-              "name": "time",
+              "name": "__time",
               "type": "timestamp with local time zone"
             },
             "dimensions": [
-              "intInc1",
-              "intRep1",
-              "dblInc1",
-              "dblRep1",
               "strInc1",
               "strRep1",
               "decInc1",
@@ -45,10 +41,6 @@
               "smallRep1",
               "dateCur1",
               "dateInc1",
-              "intInc2",
-              "intRep2",
-              "dblInc2",
-              "dblRep2",
               "strInc2",
               "strRep2",
               "decInc2",
@@ -59,10 +51,6 @@
               "smallRep2",
               "dateCur2",
               "dateInc2",
-              "intInc3",
-              "intRep3",
-              "dblInc3",
-              "dblRep3",
               "strInc3",
               "strRep3",
               "decInc3",
@@ -73,10 +61,6 @@
               "smallRep3",
               "dateCur3",
               "dateInc3",
-              "intInc4",
-              "intRep4",
-              "dblInc4",
-              "dblRep4",
               "strInc4",
               "strRep4",
               "decInc4",
@@ -87,10 +71,6 @@
               "smallRep4",
               "dateCur4",
               "dateInc4",
-              "intInc5",
-              "intRep5",
-              "dblInc5",
-              "dblRep5",
               "strInc5",
               "strRep5",
               "decInc5",
@@ -102,7 +82,108 @@
               "dateCur5",
               "dateInc5"
             ],
-            "metrics": [],
+            "metrics": [
+              {
+                "type":"count",
+                "name":"intInc1",
+                "fieldName":"intInc1"
+              },
+              {
+                "type":"count",
+                "name":"intRep1",
+                "fieldName":"intRep1"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblInc1",
+                "fieldName":"dblInc1"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblRep1",
+                "fieldName":"dblRep1"
+              },
+              {
+                "type":"count",
+                "name":"intInc2",
+                "fieldName":"intInc2"
+              },
+              {
+                "type":"count",
+                "name":"intRep2",
+                "fieldName":"intRep2"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblInc2",
+                "fieldName":"dblInc2"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblRep2",
+                "fieldName":"dblRep2"
+              },
+              {
+                "type":"count",
+                "name":"intInc3",
+                "fieldName":"intInc3"
+              },
+              {
+                "type":"count",
+                "name":"intRep3",
+                "fieldName":"intRep3"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblInc3",
+                "fieldName":"dblInc3"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblRep3",
+                "fieldName":"dblRep3"
+              },
+              {
+                "type":"count",
+                "name":"intInc4",
+                "fieldName":"intInc4"
+              },
+              {
+                "type":"count",
+                "name":"intRep4",
+                "fieldName":"intRep4"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblInc4",
+                "fieldName":"dblInc4"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblRep4",
+                "fieldName":"dblRep4"
+              },
+              {
+                "type":"count",
+                "name":"intInc5",
+                "fieldName":"intInc5"
+              },
+              {
+                "type":"count",
+                "name":"intRep5",
+                "fieldName":"intRep5"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblInc5",
+                "fieldName":"dblInc5"
+              },
+              {
+                "type":"doubleSum",
+                "name":"dblRep5",
+                "fieldName":"dblRep5"
+              }
+            ],
             "complexMetrics" : []
           }
         }

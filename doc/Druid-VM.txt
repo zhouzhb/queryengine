@@ -74,8 +74,15 @@ Ingest test data:
   curl -X 'POST' -H 'Content-Type:application/json' -d @quickstart/tutorial/test-query.json http://localhost:8082/druid/v2?pretty
   You can run the above command from host machine to verify that you can access Druid - you should be able to do it because of port forwarding it will redirect localhost Druid requests to VM, just make sure you point to the host location of test.json file.
   
-  
-  
-  
-
+Make Druid start on system boot:
+ sudo vi /etc/rc.local
+  bash /home/vagrant/druid-start.sh
+  bash /home/vagrant/druid-index.sh
+  exit 0
+ sudo vi /home/vagrant/druid-start.sh
+  cd /home/vagrant/apache-druid-0.14.0-incubating
+  bin/supervise -c quickstart/tutorial/conf/tutorial-cluster.conf
+ sudo vi /home/vagrant/druid-index.sh
+  cd /home/vagrant/apache-druid-0.14.0-incubating
+  bin/post-index-task --file quickstart/tutorial/test-index.json 
 

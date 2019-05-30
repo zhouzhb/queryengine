@@ -10,8 +10,8 @@ import org.junit.Test;
 public class SchemaTest {
 
     /**
-     * Tests VM MySQL schema. VM MySQL should be set up using the following steps:
-     * https://github.com/zhouzhb/queryengine/blob/val/doc/MySQL-VM.txt
+     * Tests MySQL schema. You can setup MySQL on VM using the following steps:
+     * https://github.com/zhouzhb/queryengine/blob/master/doc/MySQL-VM.txt
      */
     @Test public void testMySqlScheme() {
         QueryController controller = new QueryController();
@@ -21,8 +21,8 @@ public class SchemaTest {
     }
 
     /**
-     * Tests VM Druid schema. VM Druid should be set up using the following steps:
-     * https://github.com/zhouzhb/queryengine/blob/val/doc/Druid-VM.txt
+     * Tests Druid schema. You can set up Druid on VM using the following steps:
+     * https://github.com/zhouzhb/queryengine/blob/master/doc/Druid-VM.txt
      */
     @Test public void testDruidScheme() {
         QueryController controller = new QueryController();

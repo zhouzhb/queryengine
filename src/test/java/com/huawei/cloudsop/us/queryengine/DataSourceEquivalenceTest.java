@@ -12,233 +12,666 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * Tests that MySQL and Druid datasources have the same data.
+ * Requirements:
+ * - MySQL VM is set up using steps at https://github.com/zhouzhb/queryengine/blob/val/doc/MySQL-VM.txt
+ * - Druid VM is set up using steps at https://github.com/zhouzhb/queryengine/blob/val/doc/Druid-VM.txt
+ */
 @Ignore
 public class DataSourceEquivalenceTest {
 
-    private final String Q1 = "select count(*) as c, \"brand_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"product_id\" = 1020"
-        + " group by \"brand_name\"";
+    private final String Q1
+        = "select count(*) as c, \"strInc1\""
+        + " from __DB__ __TIME__"
+        + " and \"strRep1\" = 'strstrstrstrstrstr1'"
+        + " group by \"strInc1\"";
 
-    private final String Q2 = "select sum(\"store_sales\") / sum(\"store_cost\") as \"profitRatio\","
-        + " \"brand_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"store_cost\" > 0"
-        + " group by \"brand_name\"";
+    private final String Q2
+        = "select sum(\"dblInc1\") / sum(\"dblRep1\") as \"profitRatio\","
+        + " \"strInc1\""
+        + " from __DB__ __TIME__"
+        + " and \"dblRep1\" > 0"
+        + " group by \"strInc1\"";
 
-    private final String Q3 = "select sum(\"store_sales\") + sum(\"store_cost\"),"
-        + " \"brand_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by \"brand_name\"";
+    private final String Q3
+        = "select sum(\"dblInc1\") + sum(\"dblRep1\"),"
+        + " \"strInc1\""
+        + " from __DB__ __TIME__"
+        + " group by \"strInc1\"";
 
-    private final String Q4 = "select 100 * sum(\"store_sales\") / (sum(\"store_sales\")"
-        + " + sum(\"store_cost\")), \"brand_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by \"brand_name\"";
+    private final String Q4
+        = "select 100 * sum(\"dblInc1\") / (sum(\"dblInc1\") + sum(\"dblRep1\")), \"strInc1\""
+        + " from __DB__ __TIME__"
+        + " group by \"strInc1\"";
 
-    private final String Q5 = "select distinct \"brand_name\","
-        + " \"country\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'";
+    private final String Q5
+        = "select distinct \"strInc1\", \"strRep1\""
+        + " from __DB__ __TIME__";
 
-    private final String Q6 = "select sum(\"store_sales\") + sum(\"store_cost\"),"
-        + " \"brand_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and (\"store_sales\" > 0 or \"store_cost\" > 0)"
-        + " group by \"brand_name\"";
+    private final String Q6
+        = "select sum(\"dblInc1\") + sum(\"dblRep1\"),"
+        + " \"strInc1\""
+        + " from __DB__ __TIME__"
+        + " and (\"dblInc1\" > 0 or \"dblRep1\" > 0)"
+        + " group by \"strInc1\"";
 
-    private final String Q7 = "select sum(\"store_sales\") / sum(\"store_cost\") as \"profitRatio\","
-        + " \"brand_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by \"brand_name\"";
+    private final String Q7
+        = "select sum(\"dblRep1\") / sum(\"dblInc1\") as \"profitRatio\","
+        + " \"strInc1\""
+        + " from __DB__ __TIME__"
+        + " group by \"strInc1\"";
 
-    private final String Q8 = "select count(*) as c, \"brand_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by \"brand_name\"";
+    private final String Q8
+        = "select count(*) as c,"
+        + " \"strInc1\""
+        + " from __DB__ __TIME__"
+        + " group by \"strInc1\"";
 
-    private final String Q9 = "select count(*) as c, \"brand_name\", \"country\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"country\" = 'USA'"
-        + " group by \"brand_name\", \"country\", floor(\"timestamp\" to DAY)";
+    private final String Q9
+        = "select count(*) as c, \"strInc1\", \"strRep1\""
+        + " from __DB__ __TIME__"
+        + " and \"strRep1\" = 'strstrstrstrstrstr1'"
+        + " group by \"strInc1\", \"strRep1\", floor(\"time\" to DAY)";
 
-    private final String Q10 = "select sum(\"store_sales\") + sum(\"store_cost\"),"
-        + " \"brand_name\", \"country\" from __DB__"
-        + "where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and (\"store_cost\" > 0 or \"store_sales\" > 0)"
-        + " group by \"brand_name\", \"country\", floor(\"timestamp\" to DAY)";
+    private final String Q10
+        = "select sum(\"dblInc1\") + sum(\"dblRep1\"),"
+        + " \"strInc1\", \"strRep1\""
+        + " from __DB__ __TIME__"
+        + " and (\"dblRep1\" > 0 or \"dblInc1\" > 0)"
+        + " group by \"strInc1\", \"strRep1\", floor(\"time\" to DAY)";
 
-    private final String Q11 = "select sum(case when \"store_sales\" <> -1 then \"store_sales\" else 0 end)"
-        + " + sum(case when \"store_cost\" <> -1 then \"store_cost\" else 0 end),"
-        + " \"brand_name\", \"country\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and (\"store_cost\" > 0 or \"store_sales\" > 0)"
-        + " group by \"brand_name\", \"country\", floor(\"timestamp\" to DAY)";
+    private final String Q11
+        = "select sum(case when \"dblInc1\" <> -1 then \"dblInc1\" else 0 end)"
+        + " + sum(case when \"dblRep1\" <> -1 then \"dblRep1\" else 0 end),"
+        + " \"strInc1\", \"strRep1\""
+        + " from __DB__ __TIME__"
+        + " and (\"dblRep1\" > 0 or \"dblInc1\" > 0)"
+        + " group by \"strInc1\", \"strRep1\", floor(\"time\" to DAY)";
 
-    private final String Q12 = "select count(*) as c, \"brand_name\", \"country\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"product_id\" = 1020"
-        + " group by \"brand_name\", \"country\", floor(\"timestamp\" to DAY)";
+    private final String Q12
+        = "select count(*) as c, \"strInc1\", floor(\"time\" to DAY)"
+        + " from __DB__ __TIME__"
+        + " and \"strRep1\" = 'strstrstrstrstrstr1'"
+        + " group by \"strInc1\", floor(\"time\" to DAY)";
 
-    private final String Q13 = "select sum(\"store_sales\") + sum(\"store_cost\"),"
-        + " \"brand_name\", \"country\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"product_id\" > 1000"
-        + " group by \"brand_name\", \"country\"";
+    private final String Q13
+        = "select sum(\"dblInc1\") + sum(\"dblRep1\"),"
+        + " \"strInc1\", \"strRep1\""
+        + " from __DB__ __TIME__"
+        + " and \"strRep1\" > 'strstrstrstrstrstr1'"
+        + " group by \"strInc1\", \"strRep1\"";
 
-    private final String Q14 = "select count(*), \"brand_name\", \"country\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"product_id\" > 1000"
-        + " group by \"brand_name\", \"country\", \"store_state\"";
+    private final String Q14
+        = "select count(*), \"strRep1\", \"strRep2\""
+        + " from __DB__ __TIME__"
+        + " and \"strInc1\" > 'strstrstrstrstrstr1'"
+        + " group by \"strRep1\", \"strRep2\"";
 
-    private final String Q15 = "select sum(\"store_sales\") + sum(\"store_cost\"),"
-        + " \"brand_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"product_id\" > 1000"
-        + " group by \"brand_name\"";
+    private final String Q15
+        = "select sum(\"dblInc1\") + sum(\"dblRep1\"),"
+        + " \"strInc1\""
+        + " from __DB__ __TIME__"
+        + " and \"strRep1\" > 'strstrstrstrstrstr1'"
+        + " group by \"strInc1\"";
 
-    private final String Q16 = "select count(*) from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"store_cost\" > 0";
+    private final String Q16
+        = "select count(*)"
+        + " from __DB__ __TIME__"
+        + " and \"dblRep1\" > 0";
 
-    private final String Q17 = "select floor(\"timestamp\" to HOUR) as \"ts\","
-        + " 100 * sum(\"store_sales\") / (sum(\"store_sales\") + sum(\"store_cost\")) from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by floor(\"timestamp\" to HOUR)";
+    private final String Q17
+        = "select floor(\"time\" to HOUR) as \"ts\","
+        + " 100 * sum(\"dblInc1\") / (sum(\"dblInc1\") + sum(\"dblRep1\"))"
+        + " from __DB__ __TIME__"
+        + " group by floor(\"time\" to HOUR)";
 
-    private final String Q18 = "select count(distinct \"brand_name\") from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"store_cost\" > 0";
+    private final String Q18
+        = "select count(distinct \"strInc1\")"
+        + " from __DB__ __TIME__"
+        + " and \"dblRep1\" > 0";
 
-    private final String Q19 = "select count(distinct \"brand_name\") from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'";
+    private final String Q19
+        = "select count(distinct \"strInc1\")"
+        + " from __DB__ __TIME__";
 
-    private final String Q20 = "select floor(\"timestamp\" to DAY) as \"ts\", count(*) as \"total\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by floor(\"timestamp\" to DAY), \"brand_name\"";
+    private final String Q20
+        = "select floor(\"time\" to DAY) as \"ts\", count(*) as \"total\""
+        + " from __DB__ __TIME__"
+        + " group by floor(\"time\" to DAY), \"strInc1\"";
 
-    private final String Q21 = "select floor(\"timestamp\" to HOUR) as \"ts\", count(*) as \"total\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by floor(\"timestamp\" to HOUR), \"brand_name\"";
+    private final String Q21
+        = "select floor(\"time\" to HOUR) as \"ts\", count(*) as \"total\""
+        + " from __DB__ __TIME__"
+        + " group by floor(\"time\" to HOUR), \"strInc1\"";
 
-    private final String Q22 = "select count(distinct \"brand_name\") from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and (\"store_cost\" > 0 or \"store_sales\" > 0)";
+    private final String Q22
+        = "select count(distinct \"strInc1\")"
+        + " from __DB__ __TIME__"
+        + " and (\"dblRep1\" > 0 or \"dblInc1\" > 0)";
 
-    private final String Q23 = "select floor(\"timestamp\" to HOUR) as \"ts\","
-        + " sum(\"store_sales\") / sum(\"store_cost\") from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by floor(\"timestamp\" to HOUR)";
+    private final String Q23
+        = "select floor(\"time\" to HOUR) as \"ts\","
+        + " sum(\"dblInc1\") / sum(\"dblRep1\")"
+        + " from __DB__ __TIME__"
+        + " group by floor(\"time\" to HOUR)";
 
-    private final String Q24 = "select count(distinct \"brand_name\") from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"country\" = 'USA'";
+    private final String Q24
+        = "select count(distinct \"strInc1\")"
+        + " from __DB__ __TIME__"
+        + " and \"strRep1\" = 'strstrstrstrstrstr1'";
 
-    private final String Q25 = "select floor(\"timestamp\" to HOUR) as \"ts\","
-        + " sum(\"store_sales\") / sum(\"store_cost\") from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"store_cost\" > 0"
-        + " group by floor(\"timestamp\" to HOUR)";
+    private final String Q25
+        = "select floor(\"time\" to HOUR) as \"ts\","
+        + " sum(\"dblInc1\") / sum(\"dblRep1\")"
+        + " from __DB__ __TIME__"
+        + " and \"dblRep1\" > 0"
+        + " group by floor(\"time\" to HOUR)";
 
-    private final String Q26 = "select \"product_id\", \"brand_name\", \"product_name\", \"SKU\", \"SRP\","
-        + " \"gross_weight\", \"net_weight\", \"recyclable_package\", \"low_fat\", \"units_per_case\","
-        + " \"cases_per_pallet\", \"shelf_width\", \"shelf_height\", \"shelf_depth\", \"product_class_id\","
-        + " \"product_subcategory\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " and \"country\" = 'USA'"
-        + " order by \"brand_name\", \"product_name\", \"SKU\", \"SRP\" limit 10";
+    private final String Q26
+        = "select \"strInc1\", \"strRep1\""
+        + " from __DB__ __TIME__"
+        + " and \"strRep1\" = 'strstrstrstrstrstr1'"
+        + " order by \"strInc1\", \"strRep1\""
+        + " limit 10";
 
-    private final String Q27 = "select \"product_id\", \"brand_name\", \"product_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'";
+    private final String Q27
+        = "select \"strInc1\", \"strRep2\""
+        + " from __DB__ __TIME__";
 
-    private final String Q28 = "select count(*), sum(\"store_sales\") from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by \"brand_name\"";
+    private final String Q28
+        = "select count(*), sum(\"dblInc1\")"
+        + " from __DB__ __TIME__"
+        + " group by \"strInc1\"";
 
-    private final String Q29 = "select count(*) as \"t\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by \"lname\", \"product_id\", \"city\" order by count(*) desc";
+    private final String Q29
+        = "select count(*) as \"t\""
+        + " from __DB__ __TIME__"
+        + " group by \"strRep1\", \"strRep2\", \"strRep3\""
+        + " order by count(*) desc";
 
-    private final String Q30 = "select avg(\"store_sales\"), avg(\"store_cost\") from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by \"city\", \"state_province\"";
+    private final String Q30
+        = "select avg(\"dblInc1\"), avg(\"dblRep1\")"
+        + " from __DB__ __TIME__"
+        + " group by \"strRep1\", \"strRep2\"";
 
-    private final String Q31 = "select count(*) from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'";
+    private final String Q31
+        = "select count(*)"
+        + " from __DB__ __TIME__";
 
-    private final String Q32 = "select \"product_id\",\"brand_name\",\"product_name\",\"SKU\",\"SRP\","
-        + "\"gross_weight\",\"net_weight\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'";
+    private final String Q32
+        = "select \"strRep1\", \"strRep2\""
+        + " from __DB__ __TIME__";
 
-    private final String Q33 = "select count(*) as \"c\", \"product_id\",\"brand_name\",\"product_name\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC'"
-        + " group by \"product_id\",\"brand_name\",\"product_name\" order by \"c\" desc";
+    private final String Q33
+        = "select count(*) as \"c\", \"strRep1\", \"strRep2\""
+        + " from __DB__ __TIME__"
+        + " group by \"strRep1\", \"strRep2\""
+        + " order by \"c\" desc";
 
-    private final String Q34 = "select \"timestamp\",\"product_id\",\"brand_name\",\"product_name\",\"SKU\",\"SRP\","
-        + "\"gross_weight\",\"net_weight\" from __DB__"
-        + " where \"timestamp\" >= '1996-01-01 00:00:00 UTC'"
-        + " and \"timestamp\" < '1997-02-01 00:00:00 UTC' order by \"brand_name\", \"product_name\", \"SKU\", \"SRP\" desc limit 10";
+    private final String Q34
+        = "select \"strRep1\", \"strRep2\""
+        + " from __DB__ __TIME__"
+        + " order by \"strRep1\", \"strRep2\" desc"
+        + " limit 10";
 
-    private final int MAX_SIGNIFICANT_DIGITS = 4;
-    private final int MAX_DIFF_PERCENTAGE = 5;
-
-    /**
-     * Compares 2 content values from {@link QueryResult} and decides if they are close enough. We define them to be close enough if all these conditions are satisfied:
-     * - If number of different rows is no more than {@link DataSourceEquivalenceTest#MAX_DIFF_PERCENTAGE}.
-     * - If a row has floating point value, only {@link DataSourceEquivalenceTest#MAX_SIGNIFICANT_DIGITS} significant digits are used.
-     * - If a row has number value in billions/millions/thousands, replace it with a string ...B/...M/...K.
-     * - If a row has timestamp value, convert it to Unix epoch time.
-     * @param content1 The first content to compare
-     * @param content2 The second content to compare
-     * @return True if contents are close enough, false otherwise
-     */
-    public boolean areCloseEnough(String content1, String content2) {
-        // Convert contents to sets
-        Set<String> set1 = rowsToSet(content1);
-        Set<String> set2 = rowsToSet(content2);
-
-        // Verify they have a lot of the same rows
-        Set<String> diff = Sets.symmetricDifference(set1, set2);
-        int diffCount = diff.size();
-        int setCount = set1.size() + set2.size();
-        double diffPercentage = 100d * diffCount / setCount;
-        return diffPercentage < MAX_DIFF_PERCENTAGE;
+    @Test public void testDruidMySqlEquivalence1() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q1);
+        String druidQuery = generateDruidQueryFromTemplate(Q1);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
     }
 
-    /**
+    @Test public void testDruidMySqlEquivalence2() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q2);
+        String druidQuery = generateDruidQueryFromTemplate(Q2);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence3() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q3);
+        String druidQuery = generateDruidQueryFromTemplate(Q3);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence4() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q4);
+        String druidQuery = generateDruidQueryFromTemplate(Q4);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence5() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q5);
+        String druidQuery = generateDruidQueryFromTemplate(Q5);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence6() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q6);
+        String druidQuery = generateDruidQueryFromTemplate(Q6);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence7() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q7);
+        String druidQuery = generateDruidQueryFromTemplate(Q7);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence8() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q8);
+        String druidQuery = generateDruidQueryFromTemplate(Q8);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence9() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q9);
+        String druidQuery = generateDruidQueryFromTemplate(Q9);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence10() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q10);
+        String druidQuery = generateDruidQueryFromTemplate(Q10);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence11() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q11);
+        String druidQuery = generateDruidQueryFromTemplate(Q11);
+        QueryResult mySqlResult = controller.query(mySqlQuery);
+        QueryResult druidResult = controller.query(druidQuery);
+        assertEquals(mySqlResult.getContent(), druidResult.getContent());
+        assertNotNull(mySqlResult.getContent());
+        assertNotNull(druidResult.getContent());
+        assertFalse("".equals(mySqlResult.getContent()));
+        assertFalse("".equals(druidResult.getContent()));
+    }
+
+    @Test public void testDruidMySqlEquivalence12() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q12);
+        String druidQuery = generateDruidQueryFromTemplate(Q12);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence13() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q13);
+        String druidQuery = generateDruidQueryFromTemplate(Q13);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence14() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q14);
+        String druidQuery = generateDruidQueryFromTemplate(Q14);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence15() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q15);
+        String druidQuery = generateDruidQueryFromTemplate(Q15);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence16() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q16);
+        String druidQuery = generateDruidQueryFromTemplate(Q16);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence17() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q17);
+        String druidQuery = generateDruidQueryFromTemplate(Q17);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence18() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q18);
+        String druidQuery = generateDruidQueryFromTemplate(Q18);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence19() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q19);
+        String druidQuery = generateDruidQueryFromTemplate(Q19);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence20() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q20);
+        String druidQuery = generateDruidQueryFromTemplate(Q20);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence21() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q21);
+        String druidQuery = generateDruidQueryFromTemplate(Q21);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence22() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q22);
+        String druidQuery = generateDruidQueryFromTemplate(Q22);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence23() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q23);
+        String druidQuery = generateDruidQueryFromTemplate(Q23);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence24() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q24);
+        String druidQuery = generateDruidQueryFromTemplate(Q24);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence25() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q25);
+        String druidQuery = generateDruidQueryFromTemplate(Q25);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence26() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q26);
+        String druidQuery = generateDruidQueryFromTemplate(Q26);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertTrue(areEqualAsSets(mySqlResult, druidResult));
+    }
+
+    @Test public void testDruidMySqlEquivalence27() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q27);
+        String druidQuery = generateDruidQueryFromTemplate(Q27);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertEquals(mySqlResult, druidResult);
+    }
+
+    @Test public void testDruidMySqlEquivalence28() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q28);
+        String druidQuery = generateDruidQueryFromTemplate(Q28);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertEquals(mySqlResult, druidResult);
+    }
+
+    @Test public void testDruidMySqlEquivalence29() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q29);
+        String druidQuery = generateDruidQueryFromTemplate(Q29);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertEquals(mySqlResult, druidResult);
+    }
+
+    @Test public void testDruidMySqlEquivalence30() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q30);
+        String druidQuery = generateDruidQueryFromTemplate(Q30);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertEquals(mySqlResult, druidResult);
+    }
+
+    @Test public void testDruidMySqlEquivalence31() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q31);
+        String druidQuery = generateDruidQueryFromTemplate(Q31);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertEquals(mySqlResult, druidResult);
+    }
+
+    @Test public void testDruidMySqlEquivalence32() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q32);
+        String druidQuery = generateDruidQueryFromTemplate(Q32);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertEquals(mySqlResult, druidResult);
+    }
+
+    @Test public void testDruidMySqlEquivalence33() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q33);
+        String druidQuery = generateDruidQueryFromTemplate(Q33);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertEquals(mySqlResult, druidResult);
+    }
+
+    @Test public void testDruidMySqlEquivalence34() {
+        QueryController controller = new QueryController();
+        String mySqlQuery = generateMySqlQueryFromTemplate(Q34);
+        String druidQuery = generateDruidQueryFromTemplate(Q34);
+        String mySqlResult = controller.query(mySqlQuery).getContent();
+        String druidResult = controller.query(druidQuery).getContent();
+        assertNotNull(mySqlResult);
+        assertNotNull(druidResult);
+        assertFalse("".equals(mySqlResult));
+        assertFalse("".equals(druidResult));
+        assertEquals(mySqlResult, druidResult);
+    }
+
+    private final int MAX_SIGNIFICANT_DIGITS = 4;
+
+    private boolean areEqualAsSets(String content1, String content2) {
+        Set<String> set1 = rowsToSet(content1);
+        Set<String> set2 = rowsToSet(content2);
+        return set1.equals(set2);
+    }
+
+     /**
      * Convert rows of data as a string where rows are separated by new lines and columns by semicolon to a set.
      * @param rowsString
      * @return set of rows
@@ -254,7 +687,7 @@ public class DataSourceEquivalenceTest {
                 String colName = nameValuePair[0];
                 String colValue = nameValuePair[1];
 
-                // convert timestamp to Unix epoch time
+                // convert time to Unix epoch time
                 try {
                     SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
@@ -287,309 +720,18 @@ public class DataSourceEquivalenceTest {
         return ret;
     }
 
-    @Test public void testDruidMySqlEquivalence1() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q1.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q1.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
+    private String generateDruidQueryFromTemplate(final String queryTemplate) {
+        return queryTemplate.replace("__DB__", "\"druid\".\"test\"")
+            .replace("__TIME__", " where \"__time\" >= '2019-01-01T00:00:00Z'"
+                + " and \"__time\" < '2020-01-01T00:00:00Z' ")
+            .replace("\"time\"", "\"__time\"");
     }
 
-    @Test public void testDruidMySqlEquivalence2() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q2.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q2.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
+    private String generateMySqlQueryFromTemplate(final String queryTemplate) {
+        return queryTemplate.replace("__DB__", "\"mysql\".\"test\"")
+            .replace("__TIME__", " where \"time484c39f77ace4808a5a48f6b481bafbe\" >= '2019-01-01 00:00:00 UTC'"
+                + " and \"time484c39f77ace4808a5a48f6b481bafbe\" < '2020-01-01 00:00:00 UTC' ")
+            .replace("\"time\"", "\"time484c39f77ace4808a5a48f6b481bafbe\"");
     }
 
-    @Test public void testDruidMySqlEquivalence3() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q3.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q3.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence4() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q4.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q4.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence5() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q5.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q5.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence6() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q6.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q6.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence7() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q7.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q7.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence8() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q8.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q8.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence9() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q9.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q9.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence10() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q10.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q10.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence11() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q11.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q11.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence12() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q12.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q12.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence13() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q13.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q13.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence14() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q14.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q14.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence15() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q15.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q15.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence16() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q16.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q16.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence17() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q17.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q17.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence18() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q18.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q18.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence19() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q19.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q19.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence20() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q20.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q20.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence21() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q21.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q21.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence22() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q22.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q22.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence23() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q23.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q23.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence24() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q24.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q24.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence25() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q25.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q25.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence26() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q26.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q26.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence27() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q27.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q27.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence28() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q28.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q28.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence29() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q29.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q29.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence30() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q30.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q30.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence31() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q31.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q31.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence32() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q32.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q32.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence33() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q33.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q33.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
-
-    @Test public void testDruidMySqlEquivalence34() {
-        QueryController controller = new QueryController();
-        String mySqlQuery = Q34.replace("__DB__", "\"foodmart-mysql\".\"foodmart\"");
-        String druidQuery = Q34.replace("__DB__", "\"foodmart\".\"foodmart\"");
-        QueryResult druidResult = controller.query(mySqlQuery);
-        QueryResult mySqlResult = controller.query(druidQuery);
-        assertTrue(areCloseEnough(mySqlResult.getContent(), druidResult.getContent()));
-    }
 }

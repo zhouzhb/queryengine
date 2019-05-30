@@ -1,0 +1,33 @@
+Create a directory and named it to represent a VM you plan on creating, eg, "Spark" for VM with Spark installed on it.
+Create a file in that directory named Vagrantfile with this content:
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/trusty64"
+end
+
+Run command "vagrant up" in the same directory.
+This will create a VirtualBox image of Ubuntu Server 14.
+Run "vagrant ssh" to SSH to the VM.
+
+Install Git, JDK, Scala, Spark:
+ Git:
+  sudo apt-get update
+  sudo apt-get install software-properties-common python-software-properties
+  sudo add-apt-repository ppa:git-core/ppa
+  sudo apt-get update
+  sudo apt-get install git
+ JDK:
+  sudo apt-get purge openjdk-\*
+  sudo apt-get autoremove
+  sudo add-apt-repository ppa:openjdk-r/ppa
+  sudo apt-get update
+  sudo apt-get install openjdk-8-jdk
+ Scala:
+  sudo apt-get install scala
+ Spark:
+  curl -O http://apache.claz.org/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
+  tar xvf spark-2.4.3-bin-hadoop2.7.tgz
+  cd spark-2.4.3-bin-hadoop2.7
+  cd bin
+  ./spark-shell
+  println("Spark shell is running")

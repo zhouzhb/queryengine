@@ -5,8 +5,10 @@ Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/trusty64"
 end
 
-Run command "vagrant up" in the same directory.
-This will create a VirtualBox image of Ubuntu Server 14.
+Run "vagrant up" in the same directory. This will create a VirtualBox image of Ubuntu Server 14.
+Run "vagrant halt". This will power off the machine.
+In VirtualBox settings for this VM, set memory to 2048 Mb.
+Run "vagrant up".
 Run "vagrant ssh" to SSH to the VM.
 
 Install Git, JDK, Scala, Spark:
@@ -31,3 +33,13 @@ Install Git, JDK, Scala, Spark:
   cd bin
   ./spark-shell
   println("Spark shell is running")
+  
+Install sbt:
+ echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
+ sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+ sudo apt-get update
+ sudo apt-get install sbt
+ 
+Install Java CA root certiicates:
+ sudo apt-get install ca-certificates-java
+ sudo update-ca-certificates -f

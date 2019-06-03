@@ -30,4 +30,15 @@ public class SchemaTest {
         QueryResult res = controller.query(query);
         System.out.println(">>>>> result: " + res.getContent());
     }
+
+    /**
+     * Tests connection to Thrift JDBC server running on Spark: https://spark.apache.org/docs/latest/sql-distributed-sql-engine.html
+     * https://github.com/zhouzhb/queryengine/blob/master/doc/Spark-VM.txt
+     */
+    @Test public void testThriftScheme() {
+        QueryController controller = new QueryController();
+        String query = "show tables;";
+        QueryResult res = controller.query(query);
+        System.out.println(">>>>> result: " + res.getContent());
+    }
 }

@@ -25,7 +25,11 @@ Install Git, JDK, Scala, Spark:
   sudo apt-get update
   sudo apt-get install openjdk-8-jdk
  Scala:
-  sudo apt-get install scala
+  wget https://downloads.lightbend.com/scala/2.11.8/scala-2.11.8.deb
+  sudo dpkg -i scala-2.11.8.deb
+  echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
+  sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 642AC823
+  sudo apt-get install sbt
  Spark:
   curl -O http://apache.claz.org/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
   tar xvf spark-2.4.3-bin-hadoop2.7.tgz

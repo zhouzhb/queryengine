@@ -13,6 +13,17 @@
       }
     },
     {
+      name: 'thrift',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
+      operand: {
+        jdbcDriver: 'org.apache.hive.jdbc.HiveDriver',
+        jdbcUrl: 'jdbc:hive2://localhost:10000/default',
+        jdbcUser: 'vagrant',
+        jdbcPassword: ''
+      }
+    },
+    {
       "name": "druid",
       "type": "custom",
       "factory": "org.apache.calcite.adapter.druid.DruidSchemaFactory",

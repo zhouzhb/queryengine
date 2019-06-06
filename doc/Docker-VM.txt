@@ -29,19 +29,8 @@ sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io
 
 # Clone Docker Spark cluster files
-git clone https://github.com/mvillarrealb/docker-spark-cluster.git ./doc
+git clone https://github.com/valtroffuture/docker-spark-cluster.git ./doc
 cd doc
-
-# Update the base docker image, to change the spark version from 2.4.0 to 2.4.3 because the apache mirror only has 2.4.3 avaiable
-# vi ./docker/base/Dockerfile, update line 4, ENV SPARK_VERSION=2.4.0 -> 2.4.3
-
-# Add commands that make Thrift Server work
-vi docker/base/Dockerfile
-
-# Change this line:
-#  RUN apk add --no-cache python3
-# to this line:
-#  RUN apk add --no-cache python3 && apk --no-cache add procps && apk --update add coreutils
 
 # Build the dock images
 sudo bash ./build-images.sh
@@ -53,6 +42,10 @@ sudo docker-compose up
 sudo docker run -d -p 9001:9000 -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer
 
 # Browse to 127.0.0.1:9001
-# Create user, click on Local, Containers, connect  to spark-master container
+# Create user, connect to Local, celect Containers, click on "Exec Console" quick action for the spark-master container
 # In bash window, run this command to start Thrift Server:
 /spark/sbin/start-thriftserver.sh
+
+# Verify that Thrift Server is running
+ps aux | grep thrift
+

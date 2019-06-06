@@ -1,0 +1,53 @@
+# Install Ubuntu Server 18 VM on VirtualBox
+# Set RAM to 4096 and HD to 20 Gb
+
+# Add the following port forwarding rulew to the VM:
+#  Host: 127.0.0.1:22 -> Guest: 10.0.2.15:22
+#  Host: 127.0.0.1:9001 -> Guest: 10.0.2.15:9001
+# If you encounter issues, try running this command:
+#  rm /c/Users/<user name>/.ssh/known_hosts
+
+# SSH to the VM
+ssh <user name>@127.0.0.1
+
+# Install docker
+sudo apt-get remove docker docker-engine docker.io containerd runc
+sudo apt-get update
+sudo apt-get install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo apt-key fingerprint 0EBFCD88
+sudo add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+# Clone Docker Spark cluster files
+git clone https://github.com/mvillarrealb/docker-spark-cluster.git ./doc
+cd doc
+
+# Update the base docker image, to change the spark version from 2.4.0 to 2.4.3 because the apache mirror only has 2.4.3 avaiable
+# vi ./docker/base/Dockerfile, update line 4, ENV SPARK_VERSION=2.4.0 -> 2.4.3
+
+# Build the dock images
+sudo bash ./build-images.sh
+
+# Run docker compose
+sudo docker-compose up
+
+# Install and Start portainer in another window
+sudo docker run -d -p 9001:9000 -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer
+
+# Browse to 127.0.0.1:9001
+# Login, click on Local, Containers, Connect
+# In bash window, run these commands:
+apk --no-cache add procps
+apk --update add coreutils
+/spark/sbin/start-thriftserver.sh
+

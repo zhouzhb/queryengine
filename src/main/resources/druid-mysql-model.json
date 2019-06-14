@@ -7,8 +7,8 @@
       factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
       operand: {
         jdbcDriver: 'org.apache.hive.jdbc.HiveDriver',
-        jdbcUrl: 'jdbc:hive2://10.5.0.6:10000/default',
-        jdbcUser: 'val',
+        jdbcUrl: 'jdbc:hive2://127.0.0.1:10000/default', // please use VirtualBox port forwarding to the VM with Thrift server running
+        jdbcUser: '',
         jdbcPassword: ''
       }
     }

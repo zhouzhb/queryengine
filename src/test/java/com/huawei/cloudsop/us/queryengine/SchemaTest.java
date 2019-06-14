@@ -6,7 +6,7 @@ import com.huawei.cloudsop.us.queryengine.Controller.QueryController;
 import org.junit.Ignore;
 import org.junit.Test;
 
-@Ignore
+//@Ignore
 public class SchemaTest {
 
     /**
@@ -37,7 +37,8 @@ public class SchemaTest {
      */
     @Test public void testThriftScheme() {
         QueryController controller = new QueryController();
-        String query = "show tables;";
+//        String query = "select * from \"thrift\".\"employee\";";
+        String query = "select count(*) from \"thrift\".\"employee\";";
         QueryResult res = controller.query(query);
         System.out.println(">>>>> result: " + res.getContent());
     }

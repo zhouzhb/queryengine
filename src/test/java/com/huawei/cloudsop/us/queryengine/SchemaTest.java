@@ -37,8 +37,7 @@ public class SchemaTest {
      */
     @Test public void testThriftScheme() {
         QueryController controller = new QueryController();
-//        String query = "select * from \"thrift\".\"employee\";";
-        String query = "select count(*) from \"thrift\".\"test\";";
+        String query = "select count(*) from \"thrift\".\"test\"";
         QueryResult res = controller.query(query);
         System.out.println(">>>>> result: " + res.getContent());
     }

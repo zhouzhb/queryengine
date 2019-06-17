@@ -1,7 +1,14 @@
 # queryengine
 
 ## how to run
-``` 
+```
+git clone https://github.com/valtroffuture/hive.git
+cd hive
+git checkout thriftfix
+mvn install -Dskiptests
+cd ..
+git clone https://github.com/zhouzhb/queryengine.git
+cd queryengine 
 mvn install
 mvn spring-boot:run
 ```

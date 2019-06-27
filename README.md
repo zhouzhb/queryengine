@@ -5,11 +5,11 @@
 git clone https://github.com/valtroffuture/hive.git
 cd hive
 git checkout thriftfix
-mvn install -Dskiptests
+mvn install -DskipTests
 cd ..
 git clone https://github.com/zhouzhb/queryengine.git
 cd queryengine 
-mvn install
+mvn install -DskipTests
 mvn spring-boot:run
 ```
 

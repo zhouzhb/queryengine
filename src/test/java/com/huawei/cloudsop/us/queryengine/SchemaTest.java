@@ -37,7 +37,11 @@ public class SchemaTest {
      */
     @Test public void testThriftScheme() {
         QueryController controller = new QueryController();
-        String query = "select count(*) from \"thrift\".\"test\"";
+
+        //String query = "select * from \"thrift\".\"test\"";        // doesnt work: "Catch clause is unreachable" error
+        //String query = "select count(*) from \"thrift\".\"test\"";   // works
+        String query = "select ID from \"thrift\".\"test\"";       // doesnt work: "Column 'ID' not found in any table" error
+
         QueryResult res = controller.query(query);
         System.out.println(">>>>> result: " + res.getContent());
     }

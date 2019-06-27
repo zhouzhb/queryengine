@@ -1,6 +1,5 @@
 {
   version: '1.0',
-  "defaultSchema": "thrift",
   schemas: [
     {
       name: 'thrift',
@@ -8,7 +7,16 @@
       factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
       operand: {
         jdbcDriver: 'org.apache.hive.jdbc.HiveDriver',
-        jdbcUrl: 'jdbc:hive2://127.0.0.1:10000/default', // please use VirtualBox port forwarding to the VM with Thrift server running
+        //jdbcCatalog: '',
+        //jdbcCatalog: 'null',
+        //jdbcCatalog: 'test',
+        //jdbcCatalog: 'default',
+        //jdbcCatalog: 'thrift',
+//        "jdbcCatalog": {
+//          "tables": [{"name": "test"}]
+//        },
+        //jdbcCatalog: '{"tables":[{"name":"test"}]}',
+        jdbcUrl: 'jdbc:hive2://127.0.0.1:10000/testdb', // please use VirtualBox port forwarding to the VM with Thrift server running
         jdbcUser: '',
         jdbcPassword: ''
       }

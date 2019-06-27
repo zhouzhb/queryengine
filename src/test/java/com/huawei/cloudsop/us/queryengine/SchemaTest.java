@@ -15,7 +15,7 @@ public class SchemaTest {
      */
     @Test public void testThriftScheme() {
         QueryController controller = new QueryController();
-        String query = "select * from \"thrift\".\"test\"";        // doesnt work: "Catch clause is unreachable" error
+        String query = "select * from \"thrift\".\"test\"";
         QueryResult res = controller.query(query);
         System.out.println("result: " + res.getContent());
     }

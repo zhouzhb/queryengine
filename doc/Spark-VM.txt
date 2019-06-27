@@ -1,49 +1,65 @@
-Create a directory and named it to represent a VM you plan on creating, eg, "Spark" for VM with Spark installed on it.
-Create a file in that directory named Vagrantfile with this content:
+# Setup Ubuntu Server 18 VM in VirtualBox
+# Set RAM to 4096 Mb and disk size to 20 Gb
+# Set up VM port fowardings: 127.0.0.1:22 -> 10.0.2.15:22, 127.0.0.1:10000 -> 10.0.2.15:22:10000
 
-Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/trusty64"
-end
+# Install Oracle JDK 8:
+# Browse to https://www.oracle.com/technetwork/pt/java/javase/downloads/jdk8-downloads-2133151.html
+# Download jdk-8u211-linux-x64.tar.gz
+# Copy jdk-8u211-linux-x64.tar.gz to VM
+scp jdk-8u211-linux-x64.tar.gz val@127.0.0.1:/home/val
+# SSH to the VM
+ssh <user>@127.0.0.1
+# Untar the JDK TAR file
+tar -xvf jdk-8u211-linux-x64.tar.gz
+# Set up Java related directories and variables
+sudo mkdir -p /usr/lib/jvm
+sudo mv ./jdk1.8.0_211 /usr/lib/jvm/
+sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk1.8.0_211/bin/java" 1
+sudo update-alternatives --install "/usr/bin/javac" "javac" "/usr/lib/jvm/jdk1.8.0_211/bin/javac" 1
+sudo update-alternatives --install "/usr/bin/javaws" "javaws" "/usr/lib/jvm/jdk1.8.0_211/bin/javaws" 1
+sudo chmod a+x /usr/bin/java
+sudo chmod a+x /usr/bin/javac
+sudo chmod a+x /usr/bin/javaws
+sudo chown -R root:root /usr/lib/jvm/jdk1.8.0_211
+sudo update-alternatives --config java
+sudo update-alternatives --config javac
+sudo update-alternatives --config javaws
+sudo cp /usr/lib/jvm/jdk1.8.0_211/bin/javac /usr/lib/jvm/jdk1.8.0_211/jre/bin/javac
+export JAVA_HOME=/usr/lib/jvm/jdk1.8.0_211
 
-Run "vagrant up" in the same directory. This will create a VirtualBox image of Ubuntu Server 14.
-Run "vagrant halt". This will power off the machine.
-In VirtualBox settings for this VM, set memory to 2048 Mb.
-Run "vagrant up".
-Run "vagrant ssh" to SSH to the VM.
+# Install R (Spark dependency)
+sudo apt-get install r-base
 
-Install Git, JDK, Scala, Spark:
- Git:
-  sudo apt-get update
-  sudo apt-get install software-properties-common python-software-properties
-  sudo add-apt-repository ppa:git-core/ppa
-  sudo apt-get update
-  sudo apt-get install git
- JDK:
-  sudo apt-get purge openjdk-\*
-  sudo apt-get autoremove
-  sudo add-apt-repository ppa:openjdk-r/ppa
-  sudo apt-get update
-  sudo apt-get install openjdk-8-jdk
- Scala:
-  wget https://downloads.lightbend.com/scala/2.11.8/scala-2.11.8.deb
-  sudo dpkg -i scala-2.11.8.deb
-  echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
-  sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 642AC823
-  sudo apt-get install sbt
- Spark:
-  curl -O http://apache.claz.org/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
-  tar xvf spark-2.4.3-bin-hadoop2.7.tgz
-  cd spark-2.4.3-bin-hadoop2.7
-  cd bin
-  ./spark-shell
-  println("Spark shell is running")
-  
-Install sbt:
- echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
- sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
- sudo apt-get update
- sudo apt-get install sbt
- 
-Install Java CA root certiicates:
- sudo apt-get install ca-certificates-java
- sudo update-ca-certificates -f
+# Install OpenJDK (Spark dependency)
+sudo apt install openjdk-8-jdk-headless
+
+# Clone Spark
+git clone https://github.com/valtroffuture/spark.git
+cd spark
+
+# Switch to the branch with fix
+git checkout metadata-fix-1
+
+# Copy javac to prevent build error
+sudo cp /usr/lib/jvm/java-8-openjdk-amd64/bin/javac /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/javac
+
+# Set variables to prevent more build errors
+export HADOOP_CLASSPATH=/usr/lib/jvm/java-8-openjdk-amd64/lib/tools.jar
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+
+# Build Spark
+./dev/make-distribution.sh --name custom-spark --pip --r --tgz -Psparkr -Phadoop-2.7 -Phive -Phive-thriftserver -Pmesos -Pyarn -Pkubernetes
+
+# Start Thrift Server
+./sbin/start-thriftserver.sh
+
+# Verify you can connect to Thrift Server
+./bin/beeline
+!connect jdbc:hive2://localhost:10000
+
+# Create test table
+show databases;
+create table test (ID int);
+insert into test values (1);
+

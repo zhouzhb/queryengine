@@ -6,43 +6,17 @@ import com.huawei.cloudsop.us.queryengine.Controller.QueryController;
 import org.junit.Ignore;
 import org.junit.Test;
 
-//@Ignore
+@Ignore
 public class SchemaTest {
-
-//    /**
-//     * Tests MySQL schema. You can setup MySQL on VM using the following steps:
-//     * https://github.com/zhouzhb/queryengine/blob/master/doc/MySQL-VM.txt
-//     */
-//    @Test public void testMySqlScheme() {
-//        QueryController controller = new QueryController();
-//        String query = "select count(*) from \"mysql\".\"test\"";
-//        QueryResult res = controller.query(query);
-//        System.out.println(">>>>> result: " + res.getContent());
-//    }
-//
-//    /**
-//     * Tests Druid schema. You can set up Druid on VM using the following steps:
-//     * https://github.com/zhouzhb/queryengine/blob/master/doc/Druid-VM.txt
-//     */
-//    @Test public void testDruidScheme() {
-//        QueryController controller = new QueryController();
-//        String query = "select count(*) from \"druid\".\"test\"";
-//        QueryResult res = controller.query(query);
-//        System.out.println(">>>>> result: " + res.getContent());
-//    }
 
     /**
      * Tests connection to Thrift JDBC server running on Spark: https://spark.apache.org/docs/latest/sql-distributed-sql-engine.html
-     * https://github.com/zhouzhb/queryengine/blob/master/doc/Spark-VM.txt
+     * Precondition for this test is a VM set up using steps at: https://github.com/zhouzhb/queryengine/blob/master/doc/Spark-VM.txt
      */
     @Test public void testThriftScheme() {
         QueryController controller = new QueryController();
-
-        //String query = "select * from \"thrift\".\"test\"";        // doesnt work: "Catch clause is unreachable" error
-        //String query = "select count(*) from \"thrift\".\"test\"";   // works
-        String query = "select ID from \"thrift\".\"test\"";       // doesnt work: "Column 'ID' not found in any table" error
-
+        String query = "select * from \"thrift\".\"test\"";        // doesnt work: "Catch clause is unreachable" error
         QueryResult res = controller.query(query);
-        System.out.println(">>>>> result: " + res.getContent());
+        System.out.println("result: " + res.getContent());
     }
 }

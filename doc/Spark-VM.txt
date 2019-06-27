@@ -6,7 +6,7 @@
 # Browse to https://www.oracle.com/technetwork/pt/java/javase/downloads/jdk8-downloads-2133151.html
 # Download jdk-8u211-linux-x64.tar.gz
 # Copy jdk-8u211-linux-x64.tar.gz to VM
-scp jdk-8u211-linux-x64.tar.gz val@127.0.0.1:/home/val
+scp jdk-8u211-linux-x64.tar.gz val@127.0.0.1:/home/<user>
 # SSH to the VM
 ssh <user>@127.0.0.1
 # Untar the JDK TAR file
@@ -37,7 +37,7 @@ sudo apt install openjdk-8-jdk-headless
 git clone https://github.com/valtroffuture/spark.git
 cd spark
 
-# Switch to the branch with fix
+# Switch to the branch with bug fixes
 git checkout metadata-fix-1
 
 # Copy javac to prevent build error
@@ -53,6 +53,7 @@ export PATH=$JAVA_HOME/bin:$PATH
 
 # Start Thrift Server
 ./sbin/start-thriftserver.sh
+# Wait about a minute for the service to fully start
 
 # Verify you can connect to Thrift Server
 ./bin/beeline

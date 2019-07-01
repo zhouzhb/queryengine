@@ -41,7 +41,7 @@ cd spark
 git checkout metadata-fix-1
 
 # Copy javac to prevent build error
-sudo cp /usr/lib/jvm/java-8-openjdk-amd64/bin/javac /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/javac
+sudo cp /home/val/.m2/repository/mysql/mysql-connector-java/5.1.38/mysql-connector-java-5.1.38.jar /usr/share/java/mysql-connector-java-5.1.39-bin.jar
 
 # Set variables to prevent more build errors
 export HADOOP_CLASSPATH=/usr/lib/jvm/java-8-openjdk-amd64/lib/tools.jar
@@ -52,7 +52,7 @@ export PATH=$JAVA_HOME/bin:$PATH
 ./dev/make-distribution.sh --name custom-spark --pip --r --tgz -Psparkr -Phadoop-2.7 -Phive -Phive-thriftserver -Pmesos -Pyarn -Pkubernetes
 
 # Start Thrift Server
-./sbin/start-thriftserver.sh
+/home/val/spark/sbin/start-thriftserver.sh --jars "/usr/share/java/mysql-connector-java-5.1.39-bin.jar"
 # Wait about a minute for the service to fully start
 
 # Verify you can connect to Thrift Server

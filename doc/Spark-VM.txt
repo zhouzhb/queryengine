@@ -41,6 +41,9 @@ cd spark
 git checkout metadata-fix-1
 
 # Copy javac to prevent build error
+sudo cp /usr/lib/jvm/java-8-openjdk-amd64/bin/javac /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/javac
+
+# Copy MySQL Connector to be able to access MySQL rom Thrift
 sudo cp /home/val/.m2/repository/mysql/mysql-connector-java/5.1.38/mysql-connector-java-5.1.38.jar /usr/share/java/mysql-connector-java-5.1.39-bin.jar
 
 # Set variables to prevent more build errors

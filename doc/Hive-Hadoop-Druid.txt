@@ -1,0 +1,92 @@
+# Install Ubuntu
+
+vi Vagrantfile
+
+# Paste this there
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/xenial64"
+end
+
+vagrant up
+vagrant ssh
+
+# Install Java
+sudo apt-get update
+sudo apt-get install default-jdk
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+
+# Install Hadoop
+wget http://mirror.metrocast.net/apache/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz
+tar -zxvf hadoop-3.2.0.tar.gz
+export HADOOP_HOME=/home/vagrant/hadoop-3.2.0
+export PATH=$HADOOP_HOME/bin:$PATH
+
+# Install Hive
+wget http://apache.spinellicreations.com/hive/hive-3.1.1/apache-hive-3.1.1-bin.tar.gz
+export HIVE_HOME=/home/vagrant/apache-hive-3.1.1-bin
+export PATH=$HIVE_HOME/bin:$PATH
+$HADOOP_HOME/bin/hadoop fs -mkdir       /tmp
+$HADOOP_HOME/bin/hadoop fs -mkdir       /home/vagrant/warehouse
+$HADOOP_HOME/bin/hadoop fs -chmod g+w   /tmp
+$HADOOP_HOME/bin/hadoop fs -chmod g+w   /home/vagrant/warehouse
+
+# Run steps at https://askubuntu.com/questions/1073035/failed-hiveexception-java-lang-runtimeexception-unable-to-instantiate-org-apac
+
+sudo mkdir -p /user/hive/warehouse/druid_test
+
+# Install Druid
+wget http://archive.apache.org/dist/incubator/druid/0.14.0-incubating/apache-druid-0.14.0-incubating-bin.tar.gz
+tar -zxvf apache-druid-0.14.0-incubating-bin.tar.gz
+
+# Install ZooKeeper
+wget http://archive.apache.org/dist/zookeeper/zookeeper-3.4.11/zookeeper-3.4.11.tar.gz
+tar -zxvf zookeeper-3.4.11.tar.gz
+mv zookeeper-3.4.11/ apache-druid-0.14.0-incubating/zk
+
+# Start Druid
+cd apache-druid-0.14.0-incubating
+bin/supervise -c quickstart/tutorial/conf/tutorial-cluster.conf
+
+Ingest test data:
+ SSH to teh VM in another window and run these commands:
+  cd apache-druid-0.14.0-incubating
+  vi quickstart/tutorial/test-index.json
+  paste the following text into the file: https://github.com/valtroffuture/scripts/blob/master/druid-schema.json
+  vi quickstart/tutorial/test.json
+  paste the following text into the file: https://github.com/valtroffuture/scripts/blob/master/druid-index.json
+  bin/post-index-task --file quickstart/tutorial/test-index.json
+ verify that data is there:
+  vi quickstart/tutorial/test-query.json
+ 
+  paste the following text into the file:
+ 
+{
+  "queryType" : "topN",
+  "dataSource" : "test",
+  "intervals" : ["2015-09-12/2115-09-13"],
+  "granularity" : "all",
+  "metric" : "count",
+  "dimension" : "timestamp",
+  "threshold" : 10,
+  "aggregations" : [
+    {
+      "type" : "count",
+      "name" : "count"
+    }
+  ]
+}
+ 
+  curl -X 'POST' -H 'Content-Type:application/json' -d @quickstart/tutorial/test-query.json http://localhost:8082/druid/v2?pretty
+ 
+ 
+
+
+# Run Hive CLI
+$HIVE_HOME/bin/hive
+
+CREATE EXTERNAL TABLE druid_test
+STORED BY 'org.apache.hadoop.hive.druid.DruidStorageHandler'
+TBLPROPERTIES ("druid.datasource" = "test");
+
+show tables;
+select count(*) from druid_test;

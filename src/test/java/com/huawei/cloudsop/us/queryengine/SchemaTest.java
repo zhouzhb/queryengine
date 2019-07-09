@@ -32,4 +32,16 @@ public class SchemaTest {
         QueryResult res = controller.query(query);
         System.out.println("result: " + res.getContent());
     }
+
+    /**
+     * Tests Calcite->Thrift->(MySQL+CSV join) query.
+     * Preconditions for this test are:
+     * - VM is set up using steps at https://github.com/zhouzhb/queryengine/blob/master/doc/Spark-MySQL-CSV-Join.txt.
+     */
+    @Test public void testThriftMySqlCsvJoin() {
+        QueryController controller = new QueryController();
+        String query = "select \"t1\".\"id\", \"t2\".\"id1\", \"t2\".\"id2\" from \"thrift\".\"mysql_federated_sample\" \"t1\" inner join \"thrift\".\"csv_tbl\" \"t2\" on \"t1\".\"id\" = \"t2\".\"id1\"";
+        QueryResult res = controller.query(query);
+        System.out.println("result: " + res.getContent());
+    }
 }

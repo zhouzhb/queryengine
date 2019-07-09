@@ -1,0 +1,221 @@
+# Setup Ubuntu Server 18 VM in VirtualBox
+# Set RAM to 4096 Mb and disk size to 20 Gb
+# Set username and password to any value but the below instructions assume it is "val"
+# Set up VM port fowardings:
+#  127.0.0.1:22 -> 10.0.2.15:22
+#  127.0.0.1:10000 -> 10.0.2.15:22:10000
+
+# Install Oracle JDK 8:
+# Browse to https://www.oracle.com/technetwork/pt/java/javase/downloads/jdk8-downloads-2133151.html
+# Download jdk-8u211-linux-x64.tar.gz
+# Copy jdk-8u211-linux-x64.tar.gz to VM
+scp jdk-8u211-linux-x64.tar.gz val@127.0.0.1:/home/val
+# SSH to the VM
+ssh val@127.0.0.1
+# Unpack the JDK TAR file
+tar -zxvf jdk-8u211-linux-x64.tar.gz
+# Set up Java related directories and variables
+sudo mkdir -p /usr/lib/jvm
+sudo mv ./jdk1.8.0_211 /usr/lib/jvm/
+sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk1.8.0_211/bin/java" 1
+sudo update-alternatives --install "/usr/bin/javac" "javac" "/usr/lib/jvm/jdk1.8.0_211/bin/javac" 1
+sudo update-alternatives --install "/usr/bin/javaws" "javaws" "/usr/lib/jvm/jdk1.8.0_211/bin/javaws" 1
+sudo chmod a+x /usr/bin/java
+sudo chmod a+x /usr/bin/javac
+sudo chmod a+x /usr/bin/javaws
+sudo chown -R root:root /usr/lib/jvm/jdk1.8.0_211
+sudo update-alternatives --config java
+sudo update-alternatives --config javac
+sudo update-alternatives --config javaws
+sudo cp /usr/lib/jvm/jdk1.8.0_211/bin/javac /usr/lib/jvm/jdk1.8.0_211/jre/bin/javac
+export JAVA_HOME=/usr/lib/jvm/jdk1.8.0_211
+
+# Install R (Spark dependency)
+sudo apt-get install r-base
+
+# Install OpenJDK (Spark dependency)
+sudo apt install openjdk-8-jdk-headless
+
+# Install Python (Spark dependency)
+sudo apt install python-minimal
+sudo apt-get install -y python-setuptools
+
+# Get MySQL Connector to be able to access MySQL from Thrift
+# Browse to https://dev.mysql.com/downloads/connector/j/5.1.html
+# Download the JAR file
+# Copy it to the VM java share directory
+scp mysql-connector-java-5.1.47.tar.gz val@127.0.0.1:/home/val
+ssh val@127.0.0.1
+tar -zxvf mysql-connector-java-5.1.47.tar.gz
+sudo cp mysql-connector-java-5.1.47/mysql-connector-java-5.1.47.jar /usr/share/java
+
+# Set variables to prevent build errors
+export HADOOP_CLASSPATH=/usr/lib/jvm/java-8-openjdk-amd64/lib/tools.jar
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+
+# Clone Spark
+git clone https://github.com/valtroffuture/spark.git
+cd spark
+
+# Switch to the branch with bug fixes
+git checkout metadata-fix-1
+
+# Build Spark
+export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
+./dev/make-distribution.sh --name custom-spark --pip --r --tgz -Psparkr -Phadoop-2.7 -Phive -Phive-thriftserver -Pmesos -Pyarn -Pkubernetes
+
+# Start Thrift Server
+/home/val/spark/sbin/start-thriftserver.sh --jars "/usr/share/java/mysql-connector-java-5.1.39-bin.jar"
+# Wait about a minute for the service to fully start
+
+# Verify you can connect to Thrift Server
+./bin/beeline --jars "/usr/share/java/mysql-connector-java-5.1.47.jar"
+!connect jdbc:hive2://localhost:10000
+# When asked for username/password, hit ENTER
+
+# Create test table
+show databases;
+create table test (ID int);
+insert into test values (1);
+show tables;
+
+# Install MySQL by running the following commands saying "Yes" to everything:
+sudo apt-get update
+sudo apt-get install mysql-server
+sudo ufw allow mysql
+sudo service mysql restart
+sudo vi /etc/mysql/mysql.conf.d/mysqld.cnf
+# Add skip-grant-tables under [mysqld]
+# comment out this line:
+skip-external-locking
+# set this line to be:
+bind-address = 0.0.0.0
+# save and exit
+sudo /etc/init.d/mysql restart
+mysql -u root -p
+use mysql;
+update user set authentication_string=PASSWORD("") where User='root';
+update user set plugin="mysql_native_password" where User='root';
+flush privileges;
+exit
+sudo service mysql restart
+sudo mysql -u root -p -e "grant all privileges on *.* to 'root'@'%' identified by 'pass' with grant option";
+sudo service mysql restart
+
+# Get MySQL connector
+wget http://www.java2s.com/Code/JarDownload/mysql/mysql-connector-java-commercial-5.1.7-bin.jar.zip
+unzip mysql-connector-java-commercial-5.1.7-bin.jar.zip
+sudo cp mysql-connector-java-commercial-5.1.7-bin.jar  $HIVE_HOME/lib/
+
+# Run these commands in Beeline (create DB hive and table TBLS in MySQL before this)
+/home/val/spark/bin/beeline -u "jdbc:hive2://localhost:10000/default" -n admin --jars "/usr/share/java/mysql-connector-java-5.1.39-bin.jar"
+CREATE TABLE mysql_federated_sample
+USING org.apache.spark.sql.jdbc
+OPTIONS (
+  driver "com.mysql.jdbc.Driver",
+  url "jdbc:mysql://localhost/hive?user=root&password=pass",
+  dbtable "TBLS"
+);
+show tables;
+describe mysql_federated_sample;
+select * from mysql_federated_sample;
+select count(1) from mysql_federated_sample;
+
+# Install Hadoop
+wget http://mirror.metrocast.net/apache/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz
+tar -zxvf hadoop-3.2.0.tar.gz
+export HADOOP_HOME=/home/val/hadoop-3.2.0
+export PATH=$HADOOP_HOME/bin:$PATH
+
+# Install Hive
+wget http://apache.spinellicreations.com/hive/hive-3.1.1/apache-hive-3.1.1-bin.tar.gz
+tar -zxvf apache-hive-3.1.1-bin.tar.gz
+export HIVE_HOME=/home/val/apache-hive-3.1.1-bin
+export PATH=$HIVE_HOME/bin:$PATH
+$HADOOP_HOME/bin/hadoop fs -mkdir       /tmp
+$HADOOP_HOME/bin/hadoop fs -mkdir       /home/val/warehouse
+$HADOOP_HOME/bin/hadoop fs -chmod g+w   /tmp
+$HADOOP_HOME/bin/hadoop fs -chmod g+w   /home/val/warehouse
+
+# Or install an older version of Hive which is compatible with Spark
+wget https://archive.apache.org/dist/hive/hive-1.2.1/apache-hive-1.2.1-bin.tar.gz
+tar -zxvf apache-hive-1.2.1-bin.tar.gz
+export HIVE_HOME=/home/val/apache-hive-1.2.1-bin
+export PATH=$HIVE_HOME/bin:$PATH
+
+# Set up Hive metastore (based on https://askubuntu.com/questions/1073035/failed-hiveexception-java-lang-runtimeexception-unable-to-instantiate-org-apac)
+sudo vi apache-hive-3.1.1-bin/conf/hive-site.xml
+# Paste this there:
+<property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:derby:/home/val/apache-hive-3.1.1-bin/metastore_db;databaseName=metastore_db;create=true</value>
+</property>
+# Save and exit
+rm -rf $HIVE_HOME/metastore_db
+cd $HIVE_HOME
+schematool -initSchema -dbType derby
+
+# Install Druid
+wget http://archive.apache.org/dist/incubator/druid/0.14.0-incubating/apache-druid-0.14.0-incubating-bin.tar.gz
+tar -zxvf apache-druid-0.14.0-incubating-bin.tar.gz
+
+# Install ZooKeeper
+wget http://archive.apache.org/dist/zookeeper/zookeeper-3.4.11/zookeeper-3.4.11.tar.gz
+tar -zxvf zookeeper-3.4.11.tar.gz
+mv zookeeper-3.4.11/ apache-druid-0.14.0-incubating/zk
+
+# Start Druid
+cd apache-druid-0.14.0-incubating
+bin/supervise -c quickstart/tutorial/conf/tutorial-cluster.conf
+
+# Ingest test data:
+# SSH to teh VM in another window and run these commands:
+cd apache-druid-0.14.0-incubating
+vi quickstart/tutorial/test-index.json
+# paste the content of the following file there: https://github.com/valtroffuture/scripts/blob/master/druid-schema.json
+vi quickstart/tutorial/test.json
+# paste the content of the following file there: https://github.com/valtroffuture/scripts/blob/master/druid-index.json
+bin/post-index-task --file quickstart/tutorial/test-index.json
+# verify that data is there:
+vi quickstart/tutorial/test-query.json
+# paste the following text into the file:
+{
+  "queryType" : "topN",
+  "dataSource" : "test",
+  "intervals" : ["2015-09-12/2115-09-13"],
+  "granularity" : "all",
+  "metric" : "count",
+  "dimension" : "timestamp",
+  "threshold" : 10,
+  "aggregations" : [
+    {
+      "type" : "count",
+      "name" : "count"
+    }
+  ]
+}
+# Run this command and verify you see JSON with "count: 100" substring there
+curl -X 'POST' -H 'Content-Type:application/json' -d @quickstart/tutorial/test-query.json http://localhost:8082/druid/v2?pretty
+
+# Create Druid external table
+export HIVE_HOME=/home/val/apache-hive-3.1.1-bin
+export PATH=$HIVE_HOME/bin:$PATH
+export HADOOP_HOME=/home/val/hadoop-3.2.0
+export PATH=$HADOOP_HOME/bin:$PATH
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+sudo mkdir -p /user/hive/warehouse/druid_test
+hive
+show tables;
+
+CREATE EXTERNAL TABLE druid_test
+STORED BY 'org.apache.hadoop.hive.druid.DruidStorageHandler'
+TBLPROPERTIES ("druid.datasource" = "test");
+
+show tables;
+select count(*) from druid_test;
+  
+  
+  
+  

@@ -55,7 +55,8 @@ public class SchemaTest {
      */
     @Test public void testMySqlCsvJoin() {
         QueryController controller = new QueryController();
-        String query = "select \"t1\".* from \"csv\".\"bigdata\" \"t1\" inner join \"mysql\".\"bigdata_tbl\" \"t2\" on \"t1\".\"intInc1\" = \"t2\".\"intInc1\"";
+        String query = "select \"t1\".*, \"t2\".* from \"csv\".\"bigdata\" \"t1\" inner join \"mysql\".\"bigdata_tbl\" \"t2\" on \"t1\".\"intInc1\" = \"t2\".\"intInc1\"";
+        //String query = "select * from \"csv\".\"bigdata\"";
         long t1 = System.currentTimeMillis();
         QueryResult res = controller.query(query);
         long t2 = System.currentTimeMillis();

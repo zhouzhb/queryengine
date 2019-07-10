@@ -28,7 +28,7 @@
       type: 'custom',
       factory: 'org.apache.calcite.adapter.csv.CsvSchemaFactory',
       operand: {
-        directory: 'target/test-classes'
+        directory: 'bigdata'
       }
     }
   ]

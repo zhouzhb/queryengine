@@ -4,6 +4,7 @@
 # Set up VM port fowardings:
 #  127.0.0.1:22 -> 10.0.2.15:22
 #  127.0.0.1:10000 -> 10.0.2.15:22:10000
+#  127.0.0.1:3306 -> 10.0.2.15:22:3306
 
 # Install Oracle JDK 8:
 # Browse to https://www.oracle.com/technetwork/pt/java/javase/downloads/jdk8-downloads-2133151.html
@@ -96,12 +97,12 @@ sudo service mysql restart
 
 # Run these commands in Beeline (create DB hive and table TBLS in MySQL before this)
 /home/val/spark/bin/beeline -u "jdbc:hive2://localhost:10000/default" -n admin
-CREATE TABLE mysql_federated_sample
+CREATE TABLE mysql_bigdata
 USING org.apache.spark.sql.jdbc
 OPTIONS (
   driver "com.mysql.jdbc.Driver",
-  url "jdbc:mysql://localhost/hive?user=root&password=pass",
-  dbtable "TBLS"
+  url "jdbc:mysql://localhost/bigdata_db?user=root&password=pass",
+  dbtable "bigdata_tbl"
 );
 show tables;
 describe mysql_federated_sample;
@@ -149,25 +150,24 @@ vi test.csv
 # Save and exit
 
 # Import the CSV file to Hive
-sudo mkdir /user/hive/warehouse/csv_tbl
-sudo chmod -R 777 /user/hive/warehouse/csv_tbl
+sudo mkdir /user/hive/warehouse/csv_bigdata
+sudo chmod -R 777 /user/hive/warehouse/csv_bigdata
 /home/val/spark/bin/beeline -u "jdbc:hive2://localhost:10000/default" -n admin
 # Run this command there to create table
-CREATE table csv_tbl(
-id1 INT,
-id2 INT
-)
+CREATE table csv_bigdata (`time484c39f77ace4808a5a48f6b481bafbe` TIMESTAMP, `intInc1` INTEGER, `intRep1` INTEGER, `dblInc1` DOUBLE, `dblRep1` DOUBLE, `strInc1` VARCHAR(30), `strRep1` VARCHAR(30), `decInc1` DECIMAL(10,4), `decRep1` DECIMAL(10,4), `boolInc1` BOOLEAN, `boolRep1` BOOLEAN, `smallInc1` SMALLINT, `smallRep1` SMALLINT, `dateCur1` DATE, `dateInc1` DATE, `intInc2` INTEGER, `intRep2` INTEGER, `dblInc2` DOUBLE, `dblRep2` DOUBLE, `strInc2` VARCHAR(30), `strRep2` VARCHAR(30), `decInc2` DECIMAL(10,4), `decRep2` DECIMAL(10,4), `boolInc2` BOOLEAN, `boolRep2` BOOLEAN, `smallInc2` SMALLINT, `smallRep2` SMALLINT, `dateCur2` DATE, `dateInc2` DATE, `intInc3` INTEGER, `intRep3` INTEGER, `dblInc3` DOUBLE, `dblRep3` DOUBLE, `strInc3` VARCHAR(30), `strRep3` VARCHAR(30), `decInc3` DECIMAL(10,4), `decRep3` DECIMAL(10,4), `boolInc3` BOOLEAN, `boolRep3` BOOLEAN, `smallInc3` SMALLINT, `smallRep3` SMALLINT, `dateCur3` DATE, `dateInc3` DATE, `intInc4` INTEGER, `intRep4` INTEGER, `dblInc4` DOUBLE, `dblRep4` DOUBLE, `strInc4` VARCHAR(30), `strRep4` VARCHAR(30), `decInc4` DECIMAL(10,4), `decRep4` DECIMAL(10,4), `boolInc4` BOOLEAN, `boolRep4` BOOLEAN, `smallInc4` SMALLINT, `smallRep4` SMALLINT, `dateCur4` DATE, `dateInc4` DATE, `intInc5` INTEGER, `intRep5` INTEGER, `dblInc5` DOUBLE, `dblRep5` DOUBLE, `strInc5` VARCHAR(30), `strRep5` VARCHAR(30), `decInc5` DECIMAL(10,4), `decRep5` DECIMAL(10,4), `boolInc5` BOOLEAN, `boolRep5` BOOLEAN, `smallInc5` SMALLINT, `smallRep5` SMALLINT, `dateCur5` DATE, `dateInc5` DATE)
 ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
 LINES TERMINATED BY '\n'
 STORED AS TEXTFILE;
 # Load the data from CSV into the table
-LOAD DATA INPATH '/home/val/test.csv' OVERWRITE INTO TABLE csv_tbl;
+LOAD DATA INPATH '/home/val/bigdata.csv' OVERWRITE INTO TABLE csv_bigdata;
 # Verify that the tables are there with expected content
 show tables;
 select * from mysql_federated_sample;
 select * from csv_tbl;
 # Join 2 tables (MySQL and CSV)
 select t1.id, t2.id1, t2.id2 from mysql_federated_sample t1 inner join csv_tbl t2 on t1.id = t2.id1;
+select t1.*, t2.* from mysql_bigdata t1 inner join csv_bigdata t2 on t1.intInc1 = t2.intInc1;
+
 
 
 

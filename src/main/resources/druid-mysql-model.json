@@ -11,6 +11,25 @@
         jdbcUser: '',
         jdbcPassword: ''
       }
+    },
+    {
+      name: 'mysql',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
+      operand: {
+        jdbcDriver: 'com.mysql.jdbc.Driver',
+        jdbcUrl: 'jdbc:mysql://localhost/bigdata_db',
+        jdbcUser: 'root',
+        jdbcPassword: 'pass'
+      }
+    },
+    {
+      name: 'csv',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.csv.CsvSchemaFactory',
+      operand: {
+        directory: 'target/test-classes'
+      }
     }
   ]
 }

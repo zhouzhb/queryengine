@@ -40,8 +40,26 @@ public class SchemaTest {
      */
     @Test public void testThriftMySqlCsvJoin() {
         QueryController controller = new QueryController();
-        String query = "select \"t1\".\"id\", \"t2\".\"id1\", \"t2\".\"id2\" from \"thrift\".\"mysql_federated_sample\" \"t1\" inner join \"thrift\".\"csv_tbl\" \"t2\" on \"t1\".\"id\" = \"t2\".\"id1\"";
+        String query = "select \"t1\".*, \"t2\".* from \"thrift\".\"mysql_bigdata\" \"t1\" inner join \"thrift\".\"csv_bigdata\" \"t2\" on \"t1\".\"intInc1\" = \"t2\".\"intInc1\"";
+        long t1 = System.currentTimeMillis();
         QueryResult res = controller.query(query);
+        long t2 = System.currentTimeMillis();
         System.out.println("result: " + res.getContent());
+        System.out.println("time: " + (t2 - t1) + " ms");
+    }
+
+    /**
+     * Tests Calcite->(MySQL+CSV join) query.
+     * Preconditions for this test are:
+     * - VM is set up using steps at https://github.com/zhouzhb/queryengine/blob/master/doc/Spark-MySQL-CSV-Join.txt.
+     */
+    @Test public void testMySqlCsvJoin() {
+        QueryController controller = new QueryController();
+        String query = "select \"t1\".* from \"csv\".\"bigdata\" \"t1\" inner join \"mysql\".\"bigdata_tbl\" \"t2\" on \"t1\".\"intInc1\" = \"t2\".\"intInc1\"";
+        long t1 = System.currentTimeMillis();
+        QueryResult res = controller.query(query);
+        long t2 = System.currentTimeMillis();
+        System.out.println("result: " + res.getContent());
+        System.out.println("time: " + (t2 - t1) + " ms");
     }
 }

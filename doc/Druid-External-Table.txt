@@ -1,0 +1,122 @@
+# Install Ubuntu, eg, using Vagrant:
+
+vi Vagrantfile
+
+# Paste this there:
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/xenial64"
+end
+
+# Save and exit
+
+vagrant up
+vagrant ssh
+
+# Install Java
+sudo apt-get update
+sudo apt-get install default-jdk
+sudo vi ~/.bashrc
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+source ~/.bashrc
+
+# Install Hadoop
+wget http://mirror.metrocast.net/apache/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz
+tar -zxvf hadoop-3.2.0.tar.gz
+sudo vi ~/.bashrc
+export HADOOP_HOME=/home/vagrant/hadoop-3.2.0
+export PATH=$HADOOP_HOME/bin:$PATH
+source ~/.bashrc
+
+# Install Hive
+wget http://apache.spinellicreations.com/hive/hive-3.1.1/apache-hive-3.1.1-bin.tar.gz
+tar -zxvf apache-hive-3.1.1-bin.tar.gz
+sudo vi ~/.bashrc
+export HIVE_HOME=/home/vagrant/apache-hive-3.1.1-bin
+export PATH=$HIVE_HOME/bin:$PATH
+source ~/.bashrc
+$HADOOP_HOME/bin/hadoop fs -mkdir /tmp
+$HADOOP_HOME/bin/hadoop fs -chmod g+w /tmp
+sudo mkdir -p /user/hive/warehouse/druid_external_table_test
+$HADOOP_HOME/bin/hadoop fs -mkdir /user/hive/warehouse
+$HADOOP_HOME/bin/hadoop fs -chmod g+w /user/hive/warehouse
+
+# Set up metastore
+sudo vi $HIVE_HOME/bin/hive-site.xml
+ <?xml version="1.0"?>
+ <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+ <configuration>
+ <property>
+     <name>javax.jdo.option.ConnectionURL</name>
+     <value>jdbc:derby:/home/vagrant/metastore_db;databaseName=metastore_db;create=true</value>
+ </property>
+ <property>
+     <name>metastore.storage.schema.reader.impl</name>
+     <value>org.apache.hadoop.hive.metastore.SerDeStorageSchemaReader</value>
+ </property> 
+ </configuration>
+$HIVE_HOME/bin/schematool -initSchema -dbType derby
+hive
+show tables;
+exit;
+
+# Launch HiveServer2
+hive --service hiveserver2 --hiveconf hive.server2.thrift.port=10000 --hiveconf hive.root.logger=INFO,console
+# Wait 2 minutes for the server to start
+
+# Install Druid
+wget http://archive.apache.org/dist/incubator/druid/0.14.0-incubating/apache-druid-0.14.0-incubating-bin.tar.gz
+tar -zxvf apache-druid-0.14.0-incubating-bin.tar.gz
+sudo apt install python-minimal
+
+# Install ZooKeeper
+wget http://archive.apache.org/dist/zookeeper/zookeeper-3.4.11/zookeeper-3.4.11.tar.gz
+tar -zxvf zookeeper-3.4.11.tar.gz
+mv zookeeper-3.4.11/ apache-druid-0.14.0-incubating/zk
+
+# Start Druid
+cd apache-druid-0.14.0-incubating
+bin/supervise -c quickstart/tutorial/conf/tutorial-cluster.conf
+
+Ingest test data:
+ SSH to teh VM in another window and run these commands:
+  cd apache-druid-0.14.0-incubating
+  vi quickstart/tutorial/test-index.json
+  paste the content of following file, save and exit: https://github.com/valtroffuture/scripts/blob/master/druid-schema.json
+  vi quickstart/tutorial/test.json
+  paste the context of the following file, save and exit: https://github.com/valtroffuture/scripts/blob/master/druid-index.json
+  bin/post-index-task --file quickstart/tutorial/test-index.json
+ verify that data is there:
+  vi quickstart/tutorial/test-query.json
+ 
+  paste the following text into the file:
+ 
+{
+  "queryType" : "topN",
+  "dataSource" : "test",
+  "intervals" : ["2015-09-12/2115-09-13"],
+  "granularity" : "all",
+  "metric" : "count",
+  "dimension" : "timestamp",
+  "threshold" : 10,
+  "aggregations" : [
+    {
+      "type" : "count",
+      "name" : "count"
+    }
+  ]
+}
+
+# Verify you can read Druid data
+curl -X 'POST' -H 'Content-Type:application/json' -d @quickstart/tutorial/test-query.json http://localhost:8082/druid/v2?pretty
+
+# Launch beeline
+beeline -u jdbc:hive2://localhost:10000
+
+# Create external table based on the druid "test" data source as described here: https://cwiki.apache.org/confluence/display/Hive/Druid+Integration
+CREATE EXTERNAL TABLE druid_external_table_test
+STORED BY 'org.apache.hadoop.hive.druid.DruidStorageHandler'
+TBLPROPERTIES ("druid.datasource" = "test");
+
+ 
+ 
+ 

@@ -1,58 +1,26 @@
 # Setup Ubuntu Server 18 VM in VirtualBox
-# Set RAM to 4096 Mb and disk size to 20 Gb
+# Set RAM to 4096 Mb and disk size to 50 Gb
 # Set username and password to any value but the below instructions assume it is "val"
 # Set up VM port fowardings:
 #  127.0.0.1:22 -> 10.0.2.15:22
 #  127.0.0.1:10000 -> 10.0.2.15:22:10000
 #  127.0.0.1:3306 -> 10.0.2.15:22:3306
 
-# Install Oracle JDK 8:
-# Browse to https://www.oracle.com/technetwork/pt/java/javase/downloads/jdk8-downloads-2133151.html
-# Download jdk-8u211-linux-x64.tar.gz
-# Copy jdk-8u211-linux-x64.tar.gz to VM
-scp jdk-8u211-linux-x64.tar.gz val@127.0.0.1:/home/val
-# SSH to the VM
-ssh val@127.0.0.1
-# Unpack the JDK TAR file
-tar -zxvf jdk-8u211-linux-x64.tar.gz
-# Set up Java related directories and variables
-sudo mkdir -p /usr/lib/jvm
-sudo mv ./jdk1.8.0_211 /usr/lib/jvm/
-sudo update-alternatives --install "/usr/bin/java" "java" "/usr/lib/jvm/jdk1.8.0_211/bin/java" 1
-sudo update-alternatives --install "/usr/bin/javac" "javac" "/usr/lib/jvm/jdk1.8.0_211/bin/javac" 1
-sudo update-alternatives --install "/usr/bin/javaws" "javaws" "/usr/lib/jvm/jdk1.8.0_211/bin/javaws" 1
-sudo chmod a+x /usr/bin/java
-sudo chmod a+x /usr/bin/javac
-sudo chmod a+x /usr/bin/javaws
-sudo chown -R root:root /usr/lib/jvm/jdk1.8.0_211
-sudo update-alternatives --config java
-sudo update-alternatives --config javac
-sudo update-alternatives --config javaws
-sudo cp /usr/lib/jvm/jdk1.8.0_211/bin/javac /usr/lib/jvm/jdk1.8.0_211/jre/bin/javac
-export JAVA_HOME=/usr/lib/jvm/jdk1.8.0_211
+# Install OpenJDK (Spark dependency)
+sudo apt update
+sudo apt install openjdk-8-jdk-headless
+sudo cp /usr/lib/jvm/java-8-openjdk-amd64/bin/javac /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/javac
+sudo vi ~/.bashrc
+ export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+ export HADOOP_CLASSPATH=/usr/lib/jvm/java-8-openjdk-amd64/lib/tools.jar
+source ~/.bashrc
 
 # Install R (Spark dependency)
 sudo apt-get install r-base
 
-# Install OpenJDK (Spark dependency)
-sudo apt install openjdk-8-jdk-headless
-
 # Install Python (Spark dependency)
 sudo apt install python-minimal
 sudo apt-get install -y python-setuptools
-
-# Get MySQL Connector to be able to access MySQL from Thrift
-# Browse to https://dev.mysql.com/downloads/connector/j/5.1.html
-# Download the JAR file
-# Copy it to VM
-scp mysql-connector-java-5.1.47.tar.gz val@127.0.0.1:/home/val
-ssh val@127.0.0.1
-tar -zxvf mysql-connector-java-5.1.47.tar.gz
-
-# Set variables to prevent build errors
-export HADOOP_CLASSPATH=/usr/lib/jvm/java-8-openjdk-amd64/lib/tools.jar
-export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-export PATH=$JAVA_HOME/bin:$PATH
 
 # Clone Spark
 git clone https://github.com/valtroffuture/spark.git
@@ -64,13 +32,14 @@ git checkout metadata-fix-1
 # Build Spark
 export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
 ./dev/make-distribution.sh --name custom-spark --pip --r --tgz -Psparkr -Phadoop-2.7 -Phive -Phive-thriftserver -Pmesos -Pyarn -Pkubernetes
+cd ~
+
+# Get MySQL Connector to be able to access MySQL from Thrift
+wget -q "http://search.maven.org/remotecontent?filepath=mysql/mysql-connector-java/5.1.32/mysql-connector-java-5.1.32.jar" -O mysql-connector-java.jar
 
 # Start Thrift Server
-/home/val/spark/sbin/start-thriftserver.sh --jars "/home/val/mysql-connector-java-5.1.47-bin.jar"
+/home/val/spark/sbin/start-thriftserver.sh --jars "/home/val/mysql-connector-java.jar" --driver-memory 20g
 # Wait about a minute for the service to fully start
-
-# Verify you can connect to Thrift Server
-/home/val/spark/bin/beeline -u "jdbc:hive2://localhost:10000/default"
 
 # Install MySQL by running the following commands saying "Yes" to everything:
 sudo apt-get update
@@ -78,99 +47,92 @@ sudo apt-get install mysql-server
 sudo ufw allow mysql
 sudo service mysql restart
 sudo vi /etc/mysql/mysql.conf.d/mysqld.cnf
-# Add skip-grant-tables under [mysqld]
+# Add the following line under [mysqld]
+skip-grant-tables
 # comment out this line:
 skip-external-locking
 # set this line to be:
 bind-address = 0.0.0.0
 # save and exit
-sudo /etc/init.d/mysql restart
-mysql -u root -p
-use mysql;
-update user set authentication_string=PASSWORD("") where User='root';
-update user set plugin="mysql_native_password" where User='root';
-flush privileges;
-exit
-sudo service mysql restart
-sudo mysql -u root -p -e "grant all privileges on *.* to 'root'@'%' identified by 'pass' with grant option";
 sudo service mysql restart
 
-# Run these commands in Beeline (create DB hive and table TBLS in MySQL before this)
+# Copy bigdata.csv to VM
+scp bigdata.csv val@127.0.0.1:/home/val
+ssh val@127.0.0.1
+sudo cp bigdata.csv /var/lib/mysql-files/
+
+# Import test data to MySQL
+mysql
+ CREATE DATABASE bigdata_db;
+ USE bigdata_db;
+ CREATE TABLE `bigdata_tbl` (`time484c39f77ace4808a5a48f6b481bafbe` TIMESTAMP, `intInc1` INTEGER, `intRep1` INTEGER, `dblInc1` DOUBLE, `dblRep1` DOUBLE, `strInc1` VARCHAR(30), `strRep1` VARCHAR(30), `decInc1` DECIMAL(10,4), `decRep1` DECIMAL(10,4), `boolInc1` BOOLEAN, `boolRep1` BOOLEAN, `smallInc1` SMALLINT, `smallRep1` SMALLINT, `dateCur1` DATE, `intInc2` INTEGER, `intRep2` INTEGER, `dblInc2` DOUBLE, `dblRep2` DOUBLE, `strInc2` VARCHAR(30), `strRep2` VARCHAR(30), `decInc2` DECIMAL(10,4), `decRep2` DECIMAL(10,4), `boolInc2` BOOLEAN, `boolRep2` BOOLEAN, `smallInc2` SMALLINT, `smallRep2` SMALLINT, `dateCur2` DATE, `intInc3` INTEGER, `intRep3` INTEGER, `dblInc3` DOUBLE, `dblRep3` DOUBLE, `strInc3` VARCHAR(30), `strRep3` VARCHAR(30), `decInc3` DECIMAL(10,4), `decRep3` DECIMAL(10,4), `boolInc3` BOOLEAN, `boolRep3` BOOLEAN, `smallInc3` SMALLINT, `smallRep3` SMALLINT, `dateCur3` DATE, `intInc4` INTEGER, `intRep4` INTEGER, `dblInc4` DOUBLE, `dblRep4` DOUBLE, `strInc4` VARCHAR(30), `strRep4` VARCHAR(30), `decInc4` DECIMAL(10,4), `decRep4` DECIMAL(10,4), `boolInc4` BOOLEAN, `boolRep4` BOOLEAN, `smallInc4` SMALLINT, `smallRep4` SMALLINT, `dateCur4` DATE, `intInc5` INTEGER, `intRep5` INTEGER, `dblInc5` DOUBLE, `dblRep5` DOUBLE, `strInc5` VARCHAR(30), `strRep5` VARCHAR(30), `decInc5` DECIMAL(10,4), `decRep5` DECIMAL(10,4), `boolInc5` BOOLEAN, `boolRep5` BOOLEAN, `smallInc5` SMALLINT, `smallRep5` SMALLINT, `dateCur5` DATE);
+ LOAD DATA INFILE '/var/lib/mysql-files/bigdata.csv'
+ INTO TABLE bigdata_tbl
+ FIELDS TERMINATED BY ','
+ ENCLOSED BY '"'
+ LINES TERMINATED BY '\n'
+ IGNORE 1 ROWS;
 /home/val/spark/bin/beeline -u "jdbc:hive2://localhost:10000/default" -n admin
-CREATE TABLE mysql_bigdata
-USING org.apache.spark.sql.jdbc
-OPTIONS (
-  driver "com.mysql.jdbc.Driver",
-  url "jdbc:mysql://localhost/bigdata_db?user=root&password=pass",
-  dbtable "bigdata_tbl"
-);
+ CREATE TABLE mysql_bigdata
+ USING org.apache.spark.sql.jdbc
+ OPTIONS (
+   driver "com.mysql.jdbc.Driver",
+   url "jdbc:mysql://localhost/bigdata_db?user=root&password=pass",
+   dbtable "bigdata_tbl"
+ );
 show tables;
-describe mysql_federated_sample;
-select * from mysql_federated_sample;
-select count(1) from mysql_federated_sample;
+describe mysql_bigdata;
+select count(*) from mysql_bigdata;
 
 # Install Hadoop
 wget http://mirror.metrocast.net/apache/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz
 tar -zxvf hadoop-3.2.0.tar.gz
-export HADOOP_HOME=/home/val/hadoop-3.2.0
-export PATH=$HADOOP_HOME/bin:$PATH
+sudo vi ~/.bashrc
+ export HADOOP_HOME=/home/val/hadoop-3.2.0
+ export PATH=$HADOOP_HOME/bin:$PATH
+source ~/.bashrc
 
 # Install Hive
 wget http://apache.spinellicreations.com/hive/hive-3.1.1/apache-hive-3.1.1-bin.tar.gz
 tar -zxvf apache-hive-3.1.1-bin.tar.gz
-export HIVE_HOME=/home/val/apache-hive-3.1.1-bin
-export PATH=$HIVE_HOME/bin:$PATH
-$HADOOP_HOME/bin/hadoop fs -mkdir       /tmp
-$HADOOP_HOME/bin/hadoop fs -mkdir       /home/val/warehouse
-$HADOOP_HOME/bin/hadoop fs -chmod g+w   /tmp
-$HADOOP_HOME/bin/hadoop fs -chmod g+w   /home/val/warehouse
-
-# Or install an older version of Hive which is compatible with Spark
-wget https://archive.apache.org/dist/hive/hive-1.2.1/apache-hive-1.2.1-bin.tar.gz
-tar -zxvf apache-hive-1.2.1-bin.tar.gz
-export HIVE_HOME=/home/val/apache-hive-1.2.1-bin
-export PATH=$HIVE_HOME/bin:$PATH
+sudo vi ~/.bashrc
+ export HIVE_HOME=/home/val/apache-hive-3.1.1-bin
+ export PATH=$HIVE_HOME/bin:$PATH
+source ~/.bashrc
 
 # Set up Hive metastore (based on https://askubuntu.com/questions/1073035/failed-hiveexception-java-lang-runtimeexception-unable-to-instantiate-org-apac)
 sudo vi apache-hive-3.1.1-bin/conf/hive-site.xml
-# Paste this there:
-<property>
-    <name>javax.jdo.option.ConnectionURL</name>
-    <value>jdbc:derby:/home/val/apache-hive-3.1.1-bin/metastore_db;databaseName=metastore_db;create=true</value>
-</property>
+ <?xml version="1.0"?>
+ <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+ <configuration>
+ <property>
+   <name>javax.jdo.option.ConnectionURL</name>
+   <value>jdbc:derby:/home/val/apache-hive-3.1.1-bin/metastore_db;databaseName=metastore_db;create=true</value>
+ </property>
+ </configuration>
 # Save and exit
-rm -rf $HIVE_HOME/metastore_db
-cd $HIVE_HOME
-schematool -initSchema -dbType derby
-
-# Create a CSV file with test data
-vi test.csv
-# Paste this text there
-1,2
-# Save and exit
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+export HADOOP_CLASSPATH=/usr/lib/jvm/java-8-openjdk-amd64/lib/tools.jar
+export HADOOP_HOME=/home/val/hadoop-3.2.0
+export PATH=$HADOOP_HOME/bin:$PATH
+export HIVE_HOME=/home/val/apache-hive-3.1.1-bin
+export PATH=$HIVE_HOME/bin:$PATH
+$HIVE_HOME/bin/schematool -initSchema -dbType derby
 
 # Import the CSV file to Hive
 sudo mkdir /user/hive/warehouse/csv_bigdata
 sudo chmod -R 777 /user/hive/warehouse/csv_bigdata
 /home/val/spark/bin/beeline -u "jdbc:hive2://localhost:10000/default" -n admin
 # Run this command there to create table
-CREATE table csv_bigdata (`time484c39f77ace4808a5a48f6b481bafbe` TIMESTAMP, `intInc1` INTEGER, `intRep1` INTEGER, `dblInc1` DOUBLE, `dblRep1` DOUBLE, `strInc1` VARCHAR(30), `strRep1` VARCHAR(30), `decInc1` DECIMAL(10,4), `decRep1` DECIMAL(10,4), `boolInc1` BOOLEAN, `boolRep1` BOOLEAN, `smallInc1` SMALLINT, `smallRep1` SMALLINT, `dateCur1` DATE, `dateInc1` DATE, `intInc2` INTEGER, `intRep2` INTEGER, `dblInc2` DOUBLE, `dblRep2` DOUBLE, `strInc2` VARCHAR(30), `strRep2` VARCHAR(30), `decInc2` DECIMAL(10,4), `decRep2` DECIMAL(10,4), `boolInc2` BOOLEAN, `boolRep2` BOOLEAN, `smallInc2` SMALLINT, `smallRep2` SMALLINT, `dateCur2` DATE, `dateInc2` DATE, `intInc3` INTEGER, `intRep3` INTEGER, `dblInc3` DOUBLE, `dblRep3` DOUBLE, `strInc3` VARCHAR(30), `strRep3` VARCHAR(30), `decInc3` DECIMAL(10,4), `decRep3` DECIMAL(10,4), `boolInc3` BOOLEAN, `boolRep3` BOOLEAN, `smallInc3` SMALLINT, `smallRep3` SMALLINT, `dateCur3` DATE, `dateInc3` DATE, `intInc4` INTEGER, `intRep4` INTEGER, `dblInc4` DOUBLE, `dblRep4` DOUBLE, `strInc4` VARCHAR(30), `strRep4` VARCHAR(30), `decInc4` DECIMAL(10,4), `decRep4` DECIMAL(10,4), `boolInc4` BOOLEAN, `boolRep4` BOOLEAN, `smallInc4` SMALLINT, `smallRep4` SMALLINT, `dateCur4` DATE, `dateInc4` DATE, `intInc5` INTEGER, `intRep5` INTEGER, `dblInc5` DOUBLE, `dblRep5` DOUBLE, `strInc5` VARCHAR(30), `strRep5` VARCHAR(30), `decInc5` DECIMAL(10,4), `decRep5` DECIMAL(10,4), `boolInc5` BOOLEAN, `boolRep5` BOOLEAN, `smallInc5` SMALLINT, `smallRep5` SMALLINT, `dateCur5` DATE, `dateInc5` DATE)
+CREATE table csv_bigdata (`time484c39f77ace4808a5a48f6b481bafbe` TIMESTAMP, `intInc1` INTEGER, `intRep1` INTEGER, `dblInc1` DOUBLE, `dblRep1` DOUBLE, `strInc1` VARCHAR(30), `strRep1` VARCHAR(30), `decInc1` DECIMAL(10,4), `decRep1` DECIMAL(10,4), `boolInc1` BOOLEAN, `boolRep1` BOOLEAN, `smallInc1` SMALLINT, `smallRep1` SMALLINT, `dateCur1` DATE, `intInc2` INTEGER, `intRep2` INTEGER, `dblInc2` DOUBLE, `dblRep2` DOUBLE, `strInc2` VARCHAR(30), `strRep2` VARCHAR(30), `decInc2` DECIMAL(10,4), `decRep2` DECIMAL(10,4), `boolInc2` BOOLEAN, `boolRep2` BOOLEAN, `smallInc2` SMALLINT, `smallRep2` SMALLINT, `dateCur2` DATE, `intInc3` INTEGER, `intRep3` INTEGER, `dblInc3` DOUBLE, `dblRep3` DOUBLE, `strInc3` VARCHAR(30), `strRep3` VARCHAR(30), `decInc3` DECIMAL(10,4), `decRep3` DECIMAL(10,4), `boolInc3` BOOLEAN, `boolRep3` BOOLEAN, `smallInc3` SMALLINT, `smallRep3` SMALLINT, `dateCur3` DATE, `intInc4` INTEGER, `intRep4` INTEGER, `dblInc4` DOUBLE, `dblRep4` DOUBLE, `strInc4` VARCHAR(30), `strRep4` VARCHAR(30), `decInc4` DECIMAL(10,4), `decRep4` DECIMAL(10,4), `boolInc4` BOOLEAN, `boolRep4` BOOLEAN, `smallInc4` SMALLINT, `smallRep4` SMALLINT, `dateCur4` DATE, `intInc5` INTEGER, `intRep5` INTEGER, `dblInc5` DOUBLE, `dblRep5` DOUBLE, `strInc5` VARCHAR(30), `strRep5` VARCHAR(30), `decInc5` DECIMAL(10,4), `decRep5` DECIMAL(10,4), `boolInc5` BOOLEAN, `boolRep5` BOOLEAN, `smallInc5` SMALLINT, `smallRep5` SMALLINT, `dateCur5` DATE)
 ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
 LINES TERMINATED BY '\n'
 STORED AS TEXTFILE;
 # Load the data from CSV into the table
 LOAD DATA INPATH '/home/val/bigdata.csv' OVERWRITE INTO TABLE csv_bigdata;
 # Verify that the tables are there with expected content
+select count(*) from csv_bigdata;
 show tables;
-select * from mysql_federated_sample;
-select * from csv_tbl;
 # Join 2 tables (MySQL and CSV)
-select t1.id, t2.id1, t2.id2 from mysql_federated_sample t1 inner join csv_tbl t2 on t1.id = t2.id1;
 select t1.*, t2.* from mysql_bigdata t1 inner join csv_bigdata t2 on t1.intInc1 = t2.intInc1;
-
-
-
-
-  
-  
-  
+select count(*) from mysql_bigdata t1 inner join csv_bigdata t2 on t1.intInc1 = t2.intInc1;

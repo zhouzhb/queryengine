@@ -40,7 +40,7 @@ public class SchemaTest {
      */
     @Test public void testThriftMySqlCsvJoin() {
         QueryController controller = new QueryController();
-        String query = "select \"t1\".*, \"t2\".* from \"thrift\".\"mysql_bigdata\" \"t1\" inner join \"thrift\".\"csv_bigdata\" \"t2\" on \"t1\".\"intInc1\" = \"t2\".\"intInc1\"";
+        String query = "select count(*) from \"thrift\".\"mysql_bigdata\" \"t1\" inner join \"thrift\".\"csv_bigdata\" \"t2\" on \"t1\".\"strInc1\" = \"t2\".\"strInc1\"";
         long t1 = System.currentTimeMillis();
         QueryResult res = controller.query(query);
         long t2 = System.currentTimeMillis();
@@ -52,11 +52,13 @@ public class SchemaTest {
      * Tests Calcite->(MySQL+CSV join) query.
      * Preconditions for this test are:
      * - VM is set up using steps at https://github.com/zhouzhb/queryengine/blob/master/doc/Spark-MySQL-CSV-Join.txt.
+     * - Comment out the @Ignore above.
+     * - The test is ran from command line using this command to prevent out of memory errors:
+     *    mvn test -Dtest=SchemaTest#testMySqlCsvJoin
      */
     @Test public void testMySqlCsvJoin() {
         QueryController controller = new QueryController();
-        String query = "select \"t1\".*, \"t2\".* from \"csv\".\"bigdata\" \"t1\" inner join \"mysql\".\"bigdata_tbl\" \"t2\" on \"t1\".\"intInc1\" = \"t2\".\"intInc1\"";
-        //String query = "select * from \"csv\".\"bigdata\"";
+        String query = "select count(*) from \"csv\".\"bigdata\" \"t1\" inner join \"mysql\".\"bigdata_tbl\" \"t2\" on \"t1\".\"strInc1\" = \"t2\".\"strInc1\"";
         long t1 = System.currentTimeMillis();
         QueryResult res = controller.query(query);
         long t2 = System.currentTimeMillis();
